@@ -18,7 +18,7 @@
 
 // Network Configuration
 byte esp_mac[] = { 0xDE, 0xAD, 0xAF, 0x91, 0x3E, 0x69 };    // Mac address of ESP32 (Make sure its unique for each ESP32)
-IPAddress esp_ip(192, 168, 0, 12);                          // IP address of ESP32   (Make sure its unique for each ESP32)
+IPAddress esp_ip(192, 168, 0, 13);                          // IP address of ESP32   (Make sure its unique for each ESP32)
 IPAddress dns(192, 168, 0, 1);                              // DNS Server           (Modify if necessary)
 IPAddress gateway(192, 168, 0, 1);                          // Default Gateway      (Modify if necessary)
 IPAddress agent_ip(192, 168, 0, 80);                        // IP address of Micro ROS agent   (Modify if necessary)        
@@ -40,34 +40,36 @@ rcl_node_t node;
 rmw_context_t* rmw_context;
 
 // Define Node Name
-const char * node_name = "PivotESP";
+const char * node_name = "ArmESP";
 
 
 // Define MicroROS Subscriber and Publisher entities
 // --- Subscribers ---
 
-genSubscriber Pivot_Drive;
-genSubscriber Pivot_Rotate;
+genSubscriber Arm_GIMS;
+genSubscriber Arm_Gripper;
+genSubscriber Arm_Base;
 
-genSubscriber Pivot_Stop;
-genSubscriber Pivot_Home;
-genSubscriber Pivot_Restart;
+genSubscriber Arm_Stop;
+genSubscriber Arm_Home;
+genSubscriber Arm_Restart;
 genSubscriber KillSwitch;
 
 // --- Publishers ---
 
-genPublisher Pivot_Diagnostics;
+genPublisher Arm_Diagnostics;
 
 // Define variables for the publishers to send values with
 
 // Define Callback functions for the Subscribers
 
-void Pivot_Drive_Callback(const void * msgin);
-void Pivot_Rotate_Callback(const void * msgin);
+void Arm_Gripper_Callback(const void * msgin);
+void Arm_GIMS_Callback(const void * msgin);
+void Arm_Gripper_Callback(const void * msgin);
 
-void Pivot_Stop_Callback(const void * msgin);
-void Pivot_Home_Callback(const void * msgin);
-void Pivot_Restart_Callback(const void * msgin);
+void Arm_Stop_Callback(const void * msgin);
+void Arm_Home_Callback(const void * msgin);
+void Arm_Restart_Callback(const void * msgin);
 void KillSwitch_Callback(const void * msgin);
 
 
@@ -97,20 +99,19 @@ ConnectionState connection_state = ConnectionState::Initializing;
 //#define CAN_BAUDRATE_500K TWAI_TIMING_CONFIG_500KBITS()
 
 // Fixed profile parameters
-const uint32_t FIXED_VEL = 1000;   // 6081h BIGGER NUMBER = SLOWER SPEED
-const uint32_t FIXED_ACC = 1000;    // 6083h
-const uint32_t FIXED_DEC = 1000;    // 6084h 1 IS VERY FAST DO NOT GO BELOW 300 FOR ANY OF THESE!!!
 
 // -------- Node ID arrays --------
 // ODrive: 1+4n, between 1 and 29
 //set odrive motors to as many as needed and and there can_id addresses
-constexpr uint8_t ODRIVE_NODE_IDS[]   = {1, 5, 9, 13};
+constexpr uint8_t ODRIVE_NODE_IDS[] = {17,21,25}; //17,21,25
+constexpr uint8_t ODRIVE_GEAR_RATIOS[] = {48,48,8};
 //do not touch this function this tests how many of each motor there m4 is of odrive
 constexpr size_t  NUM_ODRIVE_MOTORS   = sizeof(ODRIVE_NODE_IDS) / sizeof(ODRIVE_NODE_IDS[0]);
 
 // CANopen: 0..31, but 0 reserved for broadcast
 //set lichuan motors to as many as needed and and there can_id addresses
-constexpr uint8_t OPENCAN_NODE_IDS[]  = {3, 2, 6, 4};
+constexpr uint8_t OPENCAN_NODE_IDS[]  = {6,7};
+constexpr uint8_t OPENCAN_GEAR_RATIOS[] = {16,1};
 //do not touch this function this tests how many of each motor there is of lichuan
 constexpr size_t  NUM_OPENCAN_MOTORS  = sizeof(OPENCAN_NODE_IDS) / sizeof(OPENCAN_NODE_IDS[0]);
 
@@ -153,17 +154,14 @@ bool init_twai(gpio_num_t tx, gpio_num_t rx) {
 
 // -------- Motor objects (arrays) --------
 SRT_OdriveMtr   odrives[NUM_ODRIVE_MOTORS] = {
-    SRT_OdriveMtr(&send_can_msg, ODRIVE_NODE_IDS[0]), // First motor with can id 1
-    SRT_OdriveMtr(&send_can_msg, ODRIVE_NODE_IDS[1]), // Second motor with can id 5
-    SRT_OdriveMtr(&send_can_msg, ODRIVE_NODE_IDS[2]), // Third motor with can id 9
-    SRT_OdriveMtr(&send_can_msg, ODRIVE_NODE_IDS[3]), // Fourth motor with can id 13
+    SRT_OdriveMtr(&send_can_msg, ODRIVE_NODE_IDS[0],ODRIVE_GEAR_RATIOS[0]),
+    SRT_OdriveMtr(&send_can_msg, ODRIVE_NODE_IDS[1],ODRIVE_GEAR_RATIOS[1]),
+    SRT_OdriveMtr(&send_can_msg, ODRIVE_NODE_IDS[2],ODRIVE_GEAR_RATIOS[2]),
 };
 
 SRT_CanOpenMtr  opencans[NUM_OPENCAN_MOTORS] = {
-    SRT_CanOpenMtr(&send_can_msg, OPENCAN_NODE_IDS[0]),
-    SRT_CanOpenMtr(&send_can_msg, OPENCAN_NODE_IDS[1]),
-    SRT_CanOpenMtr(&send_can_msg, OPENCAN_NODE_IDS[2]),
-    SRT_CanOpenMtr(&send_can_msg, OPENCAN_NODE_IDS[3]),
+    SRT_CanOpenMtr(&send_can_msg, OPENCAN_NODE_IDS[0],OPENCAN_GEAR_RATIOS[0]),
+    SRT_CanOpenMtr(&send_can_msg, OPENCAN_NODE_IDS[1],OPENCAN_GEAR_RATIOS[1]),
 };
 void init_odrive_motors() {
     for (size_t i = 0; i < NUM_ODRIVE_MOTORS; ++i) {
@@ -172,12 +170,12 @@ void init_odrive_motors() {
         switch (i) {
             default:
                 odrives[i].clear_errors();
-                odrives[i].set_cont_mode(velocity_control, vel_ramp);
+                odrives[i].set_cont_mode(position_control, trap_traj);
                 odrives[i].set_axis_state(closed_loop_control);
-                odrives[i].set_lim(10.0f, 20.0f);
-                odrives[i].set_traj_vel_limit(5.0f);
-                odrives[i].set_traj_accel_limits(5.0f, 5.0f);
-                odrives[i].set_absolute_position(0.0f);
+                odrives[i].set_lim(0.05f, 5.0f);
+                odrives[i].set_traj_vel_limit(0.05f);
+                odrives[i].set_traj_accel_limits(0.05f, 0.05f);
+                //odrives[i].set_absolute_position(0.0f); //Motors sometimes jerk with this on
                 break;
         }
     }
@@ -305,15 +303,16 @@ bool CreateEntities() {
   // --- Subscribers
 
   KillSwitch.init(&node, "KillSwitch", &executor, KillSwitch_Callback, BOOL);
-  Pivot_Stop.init(&node, "Pivot_Stop", &executor, Pivot_Stop_Callback, BOOL);
-  Pivot_Home.init(&node, "Pivot_Home", &executor, Pivot_Home_Callback, BOOL);
-  Pivot_Restart.init(&node, "Pivot_Restart", &executor, Pivot_Restart_Callback, BOOL);
+  Arm_Stop.init(&node, "Arm_Stop", &executor, Arm_Stop_Callback, BOOL);
+  Arm_Home.init(&node, "Arm_Home", &executor, Arm_Home_Callback, BOOL);
+  Arm_Restart.init(&node, "Arm_Restart", &executor, Arm_Restart_Callback, BOOL);
 
-  Pivot_Rotate.init(&node, "Pivot_Rotate", &executor, Pivot_Rotate_Callback, FLOAT64_ARRAY);       // Initialise Float64 Array Subscriber
-  Pivot_Drive.init(&node, "Pivot_Drive", &executor, Pivot_Drive_Callback, FLOAT64_ARRAY);
+  Arm_GIMS.init(&node, "Arm_GIMS", &executor, Arm_GIMS_Callback, FLOAT64_ARRAY);
+  Arm_Gripper.init(&node, "Arm_Gripper", &executor, Arm_Gripper_Callback, DOUBLE);
+  Arm_Base.init(&node, "Arm_Gripper", &executor, Arm_Gripper_Callback, DOUBLE);
 
   // --- Publishers
-  Pivot_Diagnostics.init(&node,"Pivot_Diagnostics",STRING);
+  Arm_Diagnostics.init(&node,"Arm_Diagnostics",STRING);
 
 
   return true;
@@ -329,15 +328,16 @@ void DestroyEntities() {
     // ADD FUNCTION THAT DESTROYS PUBLISHER AND SUBSCRIBER HERE
     // --- Subscribers
     KillSwitch.destroy(&node);
-    Pivot_Stop.destroy(&node);
-    Pivot_Home.destroy(&node);
-    Pivot_Restart.destroy(&node);
+    Arm_Stop.destroy(&node);
+    Arm_Home.destroy(&node);
+    Arm_Restart.destroy(&node);
 
-    Pivot_Rotate.destroy(&node);
-    Pivot_Drive.destroy(&node);
+    Arm_GIMS.destroy(&node);
+    Arm_Gripper.destroy(&node);
+    Arm_Base.destroy(&node);
 
     // --- Publishers
-    Pivot_Diagnostics.destroy(&node);
+    Arm_Diagnostics.destroy(&node);
 
     rclc_executor_fini(&executor);                              // Destroy Executors
     RCCHECK(rcl_node_fini(&node));                              // Destroy Node
@@ -347,7 +347,7 @@ void DestroyEntities() {
 // Error handle loop
 void error_loop() {
   Serial.println("An error has occured. Restarting...");
-  Pivot_Diagnostics.publish("PivotESP has hit an error. Restarting ESP");
+  Arm_Diagnostics.publish("ArmESP has hit an error. Restarting ESP");
 
   delay(2000);
   DestroyEntities();
@@ -362,7 +362,31 @@ void error_loop() {
 
 // Example Callback funtion for Double (Float64) values
 
-void Pivot_Rotate_Callback(const void * msgin) {
+
+void Arm_Gripper_Callback(const void * msgin) {
+
+  const std_msgs__msg__Float64 * msg_double = (const std_msgs__msg__Float64 *)msgin;          // IMPORTANT: DO NOT FORGET TO ADD THIS !!!
+
+  // Enter code here for when the subscriber receives a message.
+  Serial.print("Double value: ");
+  Serial.println(msg_double->data);
+  //opencans[1].;
+}
+
+void Arm_Base_Callback(const void * msgin) {
+
+  const std_msgs__msg__Float64 * msg_double = (const std_msgs__msg__Float64 *)msgin;          // IMPORTANT: DO NOT FORGET TO ADD THIS !!!
+
+  // Enter code here for when the subscriber receives a message.
+  Serial.print("Double value: ");
+  Serial.println(msg_double->data);
+  //opencans[0].;
+
+}
+
+
+
+void Arm_GIMS_Callback(const void * msgin) {
 
     const std_msgs__msg__Float64MultiArray * DoubleArrmsg = (const std_msgs__msg__Float64MultiArray *)msgin;              // IMPORTANT: DO NOT FORGET TO ADD THIS !!!
 
@@ -370,32 +394,21 @@ void Pivot_Rotate_Callback(const void * msgin) {
     size_t size = DoubleArrmsg->data.size;
     
     const double * array_data = DoubleArrmsg->data.data;
-
+    if(array_data[0]>0.35){
+        while(true){
+          Serial.print("YOu fucked up >0.35");
+          delay(1000);
+        }
+      }
     for(size_t i = 0; i < size; i++)
     {
-      Serial.print("Pivot_Rotate: ");Serial.print(i);Serial.print(" send:");Serial.println(array_data[i]);
-      opencans[i].move_absolute(array_data[i],200,500,500);
+      Serial.print("Arm_GIMS: ");Serial.print(i);Serial.print(" send:");Serial.println(array_data[i]);
+      odrives[i].set_ip_pos(array_data[i], 0.03f,5.0f);
     }
 
 }
 
-void Pivot_Drive_Callback(const void * msgin) {
-
-    const std_msgs__msg__Float64MultiArray * DoubleArrmsg = (const std_msgs__msg__Float64MultiArray *)msgin;              // IMPORTANT: DO NOT FORGET TO ADD THIS !!!
-
-    // Access the data array
-    size_t size = DoubleArrmsg->data.size;
-    
-    const double * array_data = DoubleArrmsg->data.data;
-
-    for(size_t i = 0; i < size; i++)
-    {
-      Serial.print("Pivot_Drive: ");Serial.print(i);Serial.print(" send:");Serial.println(array_data[i]);
-      odrives[i].set_ip_vel(array_data[i], 0.5f);
-    }
-
-}
-void Pivot_Stop_Callback(const void * msgin) {
+void Arm_Stop_Callback(const void * msgin) {
 
   const std_msgs__msg__Bool * msg_bool = (const std_msgs__msg__Bool *)msgin;                  // IMPORTANT: DO NOT FORGET TO ADD THIS !!!
   
@@ -405,14 +418,14 @@ void Pivot_Stop_Callback(const void * msgin) {
   if(msg_bool->data==true){
     //Stop all motor movement
     for (size_t i = 0; i < NUM_ODRIVE_MOTORS; ++i) {
-      odrives[i].set_ip_vel(0.0f, 0.5f);
+      odrives[i].stop();
     }
     for (size_t i = 0; i < NUM_OPENCAN_MOTORS; ++i) {
       opencans[i].stop();
     }
   }
 }
-void Pivot_Home_Callback(const void * msgin) {
+void Arm_Home_Callback(const void * msgin) {
 
   const std_msgs__msg__Bool * msg_bool = (const std_msgs__msg__Bool *)msgin;                  // IMPORTANT: DO NOT FORGET TO ADD THIS !!!
 
@@ -420,16 +433,16 @@ void Pivot_Home_Callback(const void * msgin) {
   //Serial.println(msg_bool->data);
 
   if(msg_bool->data==true){
-    Pivot_Diagnostics.publish("PivotESP is homing");
+    Arm_Diagnostics.publish("ArmESP is homing");
 
     //Homing sequence
-    Pivot_Diagnostics.publish("PivotESP does not have homing yet!");
+    Arm_Diagnostics.publish("ArmESP does not have homing yet!");
 
     //Pivot_Diagnostics.publish("PivotESP is done homing");
   }
 }
 
-void Pivot_Restart_Callback(const void * msgin) {
+void Arm_Restart_Callback(const void * msgin) {
 
   const std_msgs__msg__Bool * piv_restart = (const std_msgs__msg__Bool *)msgin;                  // IMPORTANT: DO NOT FORGET TO ADD THIS !!!
 
@@ -437,10 +450,10 @@ void Pivot_Restart_Callback(const void * msgin) {
   //Serial.println(msg_bool->data);
 
   if(piv_restart->data==true){
-    Pivot_Diagnostics.publish("PivotESP is restarting");
+    Arm_Diagnostics.publish("ArmESP is restarting");
     delay(2000);
-    // DestroyEntities();
-    // ESP.restart();
+    DestroyEntities();
+    ESP.restart();
   }
 }
 
@@ -453,12 +466,12 @@ void KillSwitch_Callback(const void * msgin) {
   //Serial.println(msg_bool->data);
 
   if(msg_bool->data==true){
-    Pivot_Diagnostics.publish("PivotESP has received a KillSwitch! System requires a shutdown");
+    Arm_Diagnostics.publish("PivotESP has received a KillSwitch! System requires a shutdown");
     //Kill it all!!!!!!
 
     for (size_t i = 0; i < NUM_ODRIVE_MOTORS; ++i) {
+      odrives[i].set_ip_pos(0.0f, 0.005f,3.0f);
       odrives[i].stop(); //This is Estop. not just stop.
-      odrives[i].set_ip_vel(0.0f, 0.5f);
     }
     for (size_t i = 0; i < NUM_OPENCAN_MOTORS; ++i) {
       opencans[i].Estop();
