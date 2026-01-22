@@ -46,7 +46,7 @@ const char * node_name = "ArmESP";
 // Define MicroROS Subscriber and Publisher entities
 // --- Subscribers ---
 
-genSubscriber Arm_GIMS;
+genSubscriber Arm_Joints;
 genSubscriber Arm_Gripper;
 genSubscriber Arm_Base;
 
@@ -64,8 +64,7 @@ genPublisher Arm_Diagnostics;
 // Define Callback functions for the Subscribers
 
 void Arm_Gripper_Callback(const void * msgin);
-void Arm_GIMS_Callback(const void * msgin);
-void Arm_Gripper_Callback(const void * msgin);
+void Arm_Joints_Callback(const void * msgin);
 
 void Arm_Stop_Callback(const void * msgin);
 void Arm_Home_Callback(const void * msgin);
@@ -97,8 +96,6 @@ ConnectionState connection_state = ConnectionState::Initializing;
 #define CAN_BAUDRATE_500K TWAI_TIMING_CONFIG_500KBITS()
 
 //#define CAN_BAUDRATE_500K TWAI_TIMING_CONFIG_500KBITS()
-
-// Fixed profile parameters
 
 // -------- Node ID arrays --------
 // ODrive: 1+4n, between 1 and 29
@@ -307,9 +304,8 @@ bool CreateEntities() {
   Arm_Home.init(&node, "Arm_Home", &executor, Arm_Home_Callback, BOOL);
   Arm_Restart.init(&node, "Arm_Restart", &executor, Arm_Restart_Callback, BOOL);
 
-  Arm_GIMS.init(&node, "Arm_GIMS", &executor, Arm_GIMS_Callback, FLOAT64_ARRAY);
-  Arm_Gripper.init(&node, "Arm_Gripper", &executor, Arm_Gripper_Callback, DOUBLE);
-  Arm_Base.init(&node, "Arm_Gripper", &executor, Arm_Gripper_Callback, DOUBLE);
+  Arm_Joints.init(&node, "Arm_Joints", &executor, Arm_Joints_Callback, FLOAT64_ARRAY);
+  Arm_Gripper.init(&node, "Arm_Gripper", &executor, Arm_Gripper_Callback, FLOAT64_ARRAY);
 
   // --- Publishers
   Arm_Diagnostics.init(&node,"Arm_Diagnostics",STRING);
@@ -332,7 +328,7 @@ void DestroyEntities() {
     Arm_Home.destroy(&node);
     Arm_Restart.destroy(&node);
 
-    Arm_GIMS.destroy(&node);
+    Arm_Joints.destroy(&node);
     Arm_Gripper.destroy(&node);
     Arm_Base.destroy(&node);
 
@@ -364,29 +360,17 @@ void error_loop() {
 
 
 void Arm_Gripper_Callback(const void * msgin) {
+  const std_msgs__msg__Float64MultiArray * DoubleArrmsg = (const std_msgs__msg__Float64MultiArray *)msgin;              // IMPORTANT: DO NOT FORGET TO ADD THIS !!!
 
-  const std_msgs__msg__Float64 * msg_double = (const std_msgs__msg__Float64 *)msgin;          // IMPORTANT: DO NOT FORGET TO ADD THIS !!!
-
-  // Enter code here for when the subscriber receives a message.
-  Serial.print("Double value: ");
-  Serial.println(msg_double->data);
+    // Access the data array
+    size_t size = DoubleArrmsg->data.size;
+    
+    const double * array_data = DoubleArrmsg->data.data;
   //opencans[1].;
 }
 
-void Arm_Base_Callback(const void * msgin) {
 
-  const std_msgs__msg__Float64 * msg_double = (const std_msgs__msg__Float64 *)msgin;          // IMPORTANT: DO NOT FORGET TO ADD THIS !!!
-
-  // Enter code here for when the subscriber receives a message.
-  Serial.print("Double value: ");
-  Serial.println(msg_double->data);
-  //opencans[0].;
-
-}
-
-
-
-void Arm_GIMS_Callback(const void * msgin) {
+void Arm_Joints_Callback(const void * msgin) {
 
     const std_msgs__msg__Float64MultiArray * DoubleArrmsg = (const std_msgs__msg__Float64MultiArray *)msgin;              // IMPORTANT: DO NOT FORGET TO ADD THIS !!!
 
@@ -394,12 +378,23 @@ void Arm_GIMS_Callback(const void * msgin) {
     size_t size = DoubleArrmsg->data.size;
     
     const double * array_data = DoubleArrmsg->data.data;
-    if(array_data[0]>0.35){
-        while(true){
-          Serial.print("YOu fucked up >0.35");
-          delay(1000);
-        }
-      }
+    switch(){
+      case 0:
+
+    break;
+      case 1:
+      
+    break;
+      case 2:
+      
+    break;
+      case 3:
+      
+    break;
+      case 4:
+      
+    break;
+    }
     for(size_t i = 0; i < size; i++)
     {
       Serial.print("Arm_GIMS: ");Serial.print(i);Serial.print(" send:");Serial.println(array_data[i]);
