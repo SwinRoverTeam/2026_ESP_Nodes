@@ -238,7 +238,15 @@ void loop() {
   HandleConnectionState();
   can_check_recv();
   delay(5);
+  /*
+  opencans[0].move_absolute(500,20,5,10);
+  opencans[1].move_absolute(500,20,5,10);
+  opencans[2].move_absolute(500,20,5,10);
+  opencans[3].move_absolute(500,20,5,10);
+  while(true){
 
+  }
+  */
 }
 
 // This function handles the connect between Micro ROS inside the ESP and the Micro ROS agent
