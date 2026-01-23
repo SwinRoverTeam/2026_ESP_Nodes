@@ -105,10 +105,9 @@ constexpr size_t  NUM_ODRIVE_MOTORS   = sizeof(ODRIVE_NODE_IDS) / sizeof(ODRIVE_
 
 // CANopen: 0..31, but 0 reserved for broadcast
 //set lichuan motors to as many as needed and and there can_id addresses
-constexpr uint8_t OPENCAN_NODE_IDS[]  = {3, 2, 6, 7};
+constexpr uint8_t OPENCAN_NODE_IDS[]  = {2, 3, 6, 7};
 //do not touch this function this tests how many of each motor there is of lichuan
-constexpr size_t  NUM_OPENCAN_MOTORS  = sizeof(OPENCAN_NODE_IDS) / sizeof(OPENCAN_NODE_IDS[0]);
-float angle[] = {0,0,0,0};
+constexpr size_t  NUM_OPENCAN_MOTORS  = sizeof(OPENCAN_NODE_IDS) / sizeof(OPENCAN_NODE_IDS[0]);;
 
 // -------- Shared CAN TX (don’t touch logic) --------
 // if you want to read more on this go ahead https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/twai.html#_CPPv418twai_transmitPK18twai_message_t15TickType_t
@@ -239,15 +238,7 @@ void loop() {
   HandleConnectionState();
   can_check_recv();
   delay(5);
-  /*
-  opencans[0].move_absolute(500,20,5,10);
-  opencans[1].move_absolute(500,20,5,10);
-  opencans[2].move_absolute(500,20,5,10);
-  opencans[3].move_absolute(500,20,5,10);
-  while(true){
 
-  }
-  */
 }
 
 // This function handles the connect between Micro ROS inside the ESP and the Micro ROS agent
@@ -377,15 +368,8 @@ void Pivot_Rotate_Callback(const void * msgin) {
     const double * array_data = DoubleArrmsg->data.data;
       for(size_t i = 0; i < size; i++)
     {
-      if(array_data[i] > angle[i]+ 5 ||array_data[i] < angle[i]- 5 ){
-        if(!opencans[i].is_motor_running()){
-          Serial.print("Pivot_Rotate: ");Serial.print(i);Serial.print(" send:");Serial.println(array_data[i]);
-          opencans[i].move_absolute(array_data[i],5,400,400);
-          angle[i] = array_data[i];
-        }
-      }
+      opencans[i].move_absolute(array_data[i],5,400,400);
     }
-
 }
 
 void Pivot_Drive_Callback(const void * msgin) {
