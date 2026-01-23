@@ -155,10 +155,10 @@ SRT_OdriveMtr   odrives[NUM_ODRIVE_MOTORS] = {
 };
 
 SRT_CanOpenMtr  opencans[NUM_OPENCAN_MOTORS] = {
-    SRT_CanOpenMtr(&send_can_msg, OPENCAN_NODE_IDS[0],16),
-    SRT_CanOpenMtr(&send_can_msg, OPENCAN_NODE_IDS[1],16),
-    SRT_CanOpenMtr(&send_can_msg, OPENCAN_NODE_IDS[2],16),
-    SRT_CanOpenMtr(&send_can_msg, OPENCAN_NODE_IDS[3],16),
+    SRT_CanOpenMtr(&send_can_msg, OPENCAN_NODE_IDS[0],14),
+    SRT_CanOpenMtr(&send_can_msg, OPENCAN_NODE_IDS[1],14),
+    SRT_CanOpenMtr(&send_can_msg, OPENCAN_NODE_IDS[2],14),
+    SRT_CanOpenMtr(&send_can_msg, OPENCAN_NODE_IDS[3],14),
 };
 void init_odrive_motors() {
     for (size_t i = 0; i < NUM_ODRIVE_MOTORS; ++i) {
@@ -376,7 +376,7 @@ void Pivot_Rotate_Callback(const void * msgin) {
     const double * array_data = DoubleArrmsg->data.data;
       for(size_t i = 0; i < size; i++)
     {
-      opencans[i].move_absolute(array_data[i],5,400,400);
+      opencans[i].move_absolute(array_data[i],8,300,300);
     }
 }
 
