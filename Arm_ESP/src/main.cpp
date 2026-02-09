@@ -91,8 +91,8 @@ ConnectionState connection_state = ConnectionState::Initializing;
 #include "SRT_OpenCan.h"
 
 // -------- CAN config --------
-#define CAN_TX_GPIO GPIO_NUM_16
-#define CAN_RX_GPIO GPIO_NUM_18
+#define CAN_TX_GPIO GPIO_NUM_18
+#define CAN_RX_GPIO GPIO_NUM_16
 #define CAN_BAUDRATE_500K TWAI_TIMING_CONFIG_500KBITS()
 
 //#define CAN_BAUDRATE_500K TWAI_TIMING_CONFIG_500KBITS()
