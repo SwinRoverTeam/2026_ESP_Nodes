@@ -90,8 +90,8 @@ ConnectionState connection_state = ConnectionState::Initializing;
 #include "SRT_OpenCan.h"
 
 // -------- CAN config --------
-#define CAN_TX_GPIO GPIO_NUM_16
-#define CAN_RX_GPIO GPIO_NUM_18
+#define CAN_TX_GPIO GPIO_NUM_18
+#define CAN_RX_GPIO GPIO_NUM_16
 #define CAN_BAUDRATE_500K TWAI_TIMING_CONFIG_500KBITS()
 
 //#define CAN_BAUDRATE_500K TWAI_TIMING_CONFIG_500KBITS()
@@ -105,7 +105,7 @@ constexpr size_t  NUM_ODRIVE_MOTORS   = sizeof(ODRIVE_NODE_IDS) / sizeof(ODRIVE_
 
 // CANopen: 0..31, but 0 reserved for broadcast
 //set lichuan motors to as many as needed and and there can_id addresses
-constexpr uint8_t OPENCAN_NODE_IDS[]  = {2, 3, 6, 7};
+constexpr uint8_t OPENCAN_NODE_IDS[]  = {2, 3, 4, 6};
 //do not touch this function this tests how many of each motor there is of lichuan
 constexpr size_t  NUM_OPENCAN_MOTORS  = sizeof(OPENCAN_NODE_IDS) / sizeof(OPENCAN_NODE_IDS[0]);;
 
