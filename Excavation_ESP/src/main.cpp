@@ -77,6 +77,7 @@ ConnectionState connection_state = ConnectionState::Initializing;
 //set lichuan motors to as many as needed and and there can_id addresses
 constexpr uint8_t OPENCAN_NODE_IDS[]  = {8};
 constexpr uint8_t OPENCAN_GEAR_RATIOS[] = {50};
+constexpr uint8_t OPENCAN_MICROSTEP = 400;
 //do not touch this function this tests how many of each motor there is of lichuan
 constexpr size_t  NUM_OPENCAN_MOTORS  = sizeof(OPENCAN_NODE_IDS) / sizeof(OPENCAN_NODE_IDS[0]);
 
@@ -282,6 +283,6 @@ void Excavation_Fork_Callback(const void * msgin) {
   // Enter code here for when the subscriber receives a message.
   //Serial.print("Double value: ");
   //Serial.println(msg_double->data);
-  opencans[0].move_absolute(static_cast<int32_t>(msg_double->data),4,300,300);
+  opencans[0].move_absolute(static_cast<int32_t>(msg_double->data)/1000*OPENCAN_MICROSTEP,4,300,300);
 
 }
