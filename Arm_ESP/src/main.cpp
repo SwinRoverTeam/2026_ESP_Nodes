@@ -102,6 +102,7 @@ ConnectionState connection_state = ConnectionState::Initializing;
 //set odrive motors to as many as needed and and there can_id addresses
 constexpr uint8_t ODRIVE_NODE_IDS[] = {17,21,25}; //17,21,25
 constexpr uint8_t ODRIVE_GEAR_RATIOS[] = {48,48,8};
+constexpr uint8_t ODRIVE_RPS[] = {0.5,0.5,0.5,0.5};
 //do not touch this function this tests how many of each motor there m4 is of odrive
 constexpr size_t  NUM_ODRIVE_MOTORS   = sizeof(ODRIVE_NODE_IDS) / sizeof(ODRIVE_NODE_IDS[0]);
 
@@ -109,6 +110,7 @@ constexpr size_t  NUM_ODRIVE_MOTORS   = sizeof(ODRIVE_NODE_IDS) / sizeof(ODRIVE_
 //set lichuan motors to as many as needed and and there can_id addresses
 constexpr uint8_t OPENCAN_NODE_IDS[]  = {6,7};
 constexpr uint8_t OPENCAN_GEAR_RATIOS[] = {16,1};
+constexpr uint8_t OPENCAN_MICROSTEP = 400;
 //do not touch this function this tests how many of each motor there is of lichuan
 constexpr size_t  NUM_OPENCAN_MOTORS  = sizeof(OPENCAN_NODE_IDS) / sizeof(OPENCAN_NODE_IDS[0]);
 
@@ -398,24 +400,21 @@ void Arm_Joints_Callback(const void * msgin) {
           CURRENTpos[i] = MINpos[i];
 
           Serial.print("Arm_LiCh: ");Serial.print(i);Serial.print(" send:");Serial.println(CURRENTpos[i]);
-          // opencans[i].move_absolute(CURRENTpos[i],4,300,300);
 
         } else if (newPos > MAXpos[i]) {
 
           CURRENTpos[i] = MAXpos[i];
 
           Serial.print("Arm_LiCh: ");Serial.print(i);Serial.print(" send:");Serial.println(CURRENTpos[i]);
-          // opencans[i].move_absolute(CURRENTpos[i],4,300,300);
-
-
+          
         } else {
 
           CURRENTpos[i] += array_data[i];
 
           Serial.print("Arm_LiCh: ");Serial.print(i);Serial.print(" send:");Serial.println(CURRENTpos[i]);
-          // opencans[i].move_absolute(CURRENTpos[i],4,300,300);
-
         }
+        
+        opencans[i].move_absolute(CURRENTpos[i]*OPENCAN_MICROSTEP,4,500,500); 
 
 
       break;
@@ -429,24 +428,21 @@ void Arm_Joints_Callback(const void * msgin) {
           CURRENTpos[i] = MINpos[i];
 
           Serial.print("Arm_LiCh: ");Serial.print(i);Serial.print(" send:");Serial.println(CURRENTpos[i]);
-          // odrives[i].set_ip_pos(CURRENTpos[i], 0.03f,5.0f);
 
         } else if (newPos > MAXpos[i]) {
 
           CURRENTpos[i] = MAXpos[i];
 
           Serial.print("Arm_LiCh: ");Serial.print(i);Serial.print(" send:");Serial.println(CURRENTpos[i]);
-          // odrives[i].set_ip_pos(CURRENTpos[i], 0.03f,5.0f);
-
 
         } else {
 
           CURRENTpos[i] += array_data[i];
 
           Serial.print("Arm_LiCh: ");Serial.print(i);Serial.print(" send:");Serial.println(CURRENTpos[i]);
-          // odrives[i].set_ip_pos(CURRENTpos[i], 0.03f,5.0f);
 
         }
+        odrives[0].set_ip_pos(CURRENTpos[i]*ODRIVE_RPS[0], 0.03f,5.0f);
 
       break;
 
@@ -459,14 +455,12 @@ void Arm_Joints_Callback(const void * msgin) {
           CURRENTpos[i] = MINpos[i];
 
           Serial.print("Arm_LiCh: ");Serial.print(i);Serial.print(" send:");Serial.println(CURRENTpos[i]);
-          // odrives[i].set_ip_pos(CURRENTpos[i], 0.03f,5.0f);
 
         } else if (newPos > MAXpos[i]) {
 
           CURRENTpos[i] = MAXpos[i];
 
           Serial.print("Arm_LiCh: ");Serial.print(i);Serial.print(" send:");Serial.println(CURRENTpos[i]);
-          // odrives[i].set_ip_pos(CURRENTpos[i], 0.03f,5.0f);
 
 
         } else {
@@ -474,9 +468,11 @@ void Arm_Joints_Callback(const void * msgin) {
           CURRENTpos[i] += array_data[i];
 
           Serial.print("Arm_LiCh: ");Serial.print(i);Serial.print(" send:");Serial.println(CURRENTpos[i]);
-          // odrives[i].set_ip_pos(CURRENTpos[i], 0.03f,5.0f);
 
         } 
+        
+        odrives[1].set_ip_pos(CURRENTpos[i]*ODRIVE_RPS[1], 0.03f,5.0f);
+
         
       break;
 
@@ -489,14 +485,12 @@ void Arm_Joints_Callback(const void * msgin) {
           CURRENTpos[i] = MINpos[i];
 
           Serial.print("Arm_LiCh: ");Serial.print(i);Serial.print(" send:");Serial.println(CURRENTpos[i]);
-          // odrives[i].set_ip_pos(CURRENTpos[i], 0.03f,5.0f);
 
         } else if (newPos > MAXpos[i]) {
 
           CURRENTpos[i] = MAXpos[i];
 
           Serial.print("Arm_LiCh: ");Serial.print(i);Serial.print(" send:");Serial.println(CURRENTpos[i]);
-          // odrives[i].set_ip_pos(CURRENTpos[i], 0.03f,5.0f);
 
 
         } else {
@@ -504,9 +498,9 @@ void Arm_Joints_Callback(const void * msgin) {
           CURRENTpos[i] += array_data[i];
 
           Serial.print("Arm_LiCh: ");Serial.print(i);Serial.print(" send:");Serial.println(CURRENTpos[i]);
-          // odrives[i].set_ip_pos(CURRENTpos[i], 0.03f,5.0f);
 
-        }        
+        }
+        odrives[2].set_ip_pos(CURRENTpos[i]*ODRIVE_RPS[2], 0.03f,5.0f);
         
       break;
 
@@ -519,7 +513,6 @@ void Arm_Joints_Callback(const void * msgin) {
           CURRENTpos[i] = MINpos[i];
 
           Serial.print("Arm_LiCh: ");Serial.print(i);Serial.print(" send:");Serial.println(CURRENTpos[i]);
-          // opencans[i].move_absolute(CURRENTpos[i],4,300,300);
 
         } else if (newPos > MAXpos[i]) {
 
