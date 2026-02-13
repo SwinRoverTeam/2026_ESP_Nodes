@@ -100,12 +100,17 @@ ConnectionState connection_state = ConnectionState::Initializing;
 // ODrive: 1+4n, between 1 and 29
 //set odrive motors to as many as needed and and there can_id addresses
 constexpr uint8_t ODRIVE_NODE_IDS[]   = {1, 5, 9, 13};
+constexpr uint8_t ODRIVE_GEAR_RATIOS[] = {8,8,8,8};
+constexpr uint8_t ODRIVE_RPS[] = {0.5,0.5,0.5,0.5};
+
 //do not touch this function this tests how many of each motor there m4 is of odrive
 constexpr size_t  NUM_ODRIVE_MOTORS   = sizeof(ODRIVE_NODE_IDS) / sizeof(ODRIVE_NODE_IDS[0]);
 
 // CANopen: 0..31, but 0 reserved for broadcast
 //set lichuan motors to as many as needed and and there can_id addresses
 constexpr uint8_t OPENCAN_NODE_IDS[]  = {2, 3, 4, 6};
+constexpr uint8_t OPENCAN_GEAR_RATIOS[] = {14,14,14,14};
+constexpr uint8_t OPENCAN_MICROSTEP = 400;
 //do not touch this function this tests how many of each motor there is of lichuan
 constexpr size_t  NUM_OPENCAN_MOTORS  = sizeof(OPENCAN_NODE_IDS) / sizeof(OPENCAN_NODE_IDS[0]);;
 
@@ -148,17 +153,17 @@ bool init_twai(gpio_num_t tx, gpio_num_t rx) {
 
 // -------- Motor objects (arrays) --------
 SRT_OdriveMtr   odrives[NUM_ODRIVE_MOTORS] = {
-    SRT_OdriveMtr(&send_can_msg, ODRIVE_NODE_IDS[0],8), // First motor with can id 1
-    SRT_OdriveMtr(&send_can_msg, ODRIVE_NODE_IDS[1],8), // Second motor with can id 5
-    SRT_OdriveMtr(&send_can_msg, ODRIVE_NODE_IDS[2],8), // Third motor with can id 9
-    SRT_OdriveMtr(&send_can_msg, ODRIVE_NODE_IDS[3],8), // Fourth motor with can id 13
+    SRT_OdriveMtr(&send_can_msg, ODRIVE_NODE_IDS[0],ODRIVE_GEAR_RATIOS[0]), // First motor with can id 1
+    SRT_OdriveMtr(&send_can_msg, ODRIVE_NODE_IDS[1],ODRIVE_GEAR_RATIOS[1]), // Second motor with can id 5
+    SRT_OdriveMtr(&send_can_msg, ODRIVE_NODE_IDS[2],ODRIVE_GEAR_RATIOS[2]), // Third motor with can id 9
+    SRT_OdriveMtr(&send_can_msg, ODRIVE_NODE_IDS[3],ODRIVE_GEAR_RATIOS[3]), // Fourth motor with can id 13
 };
 
 SRT_CanOpenMtr  opencans[NUM_OPENCAN_MOTORS] = {
-    SRT_CanOpenMtr(&send_can_msg, OPENCAN_NODE_IDS[0],14),
-    SRT_CanOpenMtr(&send_can_msg, OPENCAN_NODE_IDS[1],14),
-    SRT_CanOpenMtr(&send_can_msg, OPENCAN_NODE_IDS[2],14),
-    SRT_CanOpenMtr(&send_can_msg, OPENCAN_NODE_IDS[3],14),
+    SRT_CanOpenMtr(&send_can_msg, OPENCAN_NODE_IDS[0],OPENCAN_GEAR_RATIOS[0]),
+    SRT_CanOpenMtr(&send_can_msg, OPENCAN_NODE_IDS[1],OPENCAN_GEAR_RATIOS[1]),
+    SRT_CanOpenMtr(&send_can_msg, OPENCAN_NODE_IDS[2],OPENCAN_GEAR_RATIOS[2]),
+    SRT_CanOpenMtr(&send_can_msg, OPENCAN_NODE_IDS[3],OPENCAN_GEAR_RATIOS[3]),
 };
 void init_odrive_motors() {
     for (size_t i = 0; i < NUM_ODRIVE_MOTORS; ++i) {
@@ -376,7 +381,7 @@ void Pivot_Rotate_Callback(const void * msgin) {
     const double * array_data = DoubleArrmsg->data.data;
       for(size_t i = 0; i < size; i++)
     {
-      opencans[i].move_absolute(array_data[i],8,300,300);
+      opencans[i].move_absolute(array_data[i]/1000*OPENCAN_MICROSTEP,2,500,500);
     }
 }
 
@@ -393,7 +398,7 @@ void Pivot_Drive_Callback(const void * msgin) {
     for(size_t i = 0; i < size; i++)
     {
       Serial.print("Pivot_Drive: ");Serial.print(i);Serial.print(" send:");Serial.println(array_data[i]);
-      odrives[i].set_ip_vel(map(array_data[i],0,1,0,0.8), 0.5f);
+      odrives[i].set_ip_vel(array_data[i]*ODRIVE_RPS[i], 0.5f);
     }
 
 }
