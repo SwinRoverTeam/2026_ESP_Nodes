@@ -101,7 +101,7 @@ ConnectionState connection_state = ConnectionState::Initializing;
 //set odrive motors to as many as needed and and there can_id addresses
 constexpr uint8_t ODRIVE_NODE_IDS[]   = {1, 5, 9, 13};
 constexpr uint8_t ODRIVE_GEAR_RATIOS[] = {8,8,8,8};
-constexpr uint8_t ODRIVE_RPS[] = {0.5,0.5,0.5,0.5};
+constexpr double ODRIVE_RPS[] = {0.5,0.5,0.5,0.5};
 
 //do not touch this function this tests how many of each motor there m4 is of odrive
 constexpr size_t  NUM_ODRIVE_MOTORS   = sizeof(ODRIVE_NODE_IDS) / sizeof(ODRIVE_NODE_IDS[0]);
@@ -110,7 +110,7 @@ constexpr size_t  NUM_ODRIVE_MOTORS   = sizeof(ODRIVE_NODE_IDS) / sizeof(ODRIVE_
 //set lichuan motors to as many as needed and and there can_id addresses
 constexpr uint8_t OPENCAN_NODE_IDS[]  = {2, 3, 4, 6};
 constexpr uint8_t OPENCAN_GEAR_RATIOS[] = {14,14,14,14};
-constexpr uint8_t OPENCAN_MICROSTEP = 400;
+constexpr int OPENCAN_MICROSTEP = 400;
 //do not touch this function this tests how many of each motor there is of lichuan
 constexpr size_t  NUM_OPENCAN_MOTORS  = sizeof(OPENCAN_NODE_IDS) / sizeof(OPENCAN_NODE_IDS[0]);;
 
