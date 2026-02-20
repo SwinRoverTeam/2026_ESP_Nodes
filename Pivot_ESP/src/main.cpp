@@ -431,7 +431,7 @@ void Pivot_Home_Callback(const void * msgin) {
 
     //Homing sequence
     for (size_t i = 0; i < NUM_OPENCAN_MOTORS; ++i) {
-      opencans[i].do_homing();
+      opencans[i].home_motor();
     }
 
     //Pivot_Diagnostics.publish("PivotESP is done homing");
