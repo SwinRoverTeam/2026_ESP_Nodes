@@ -430,7 +430,9 @@ void Pivot_Home_Callback(const void * msgin) {
     Pivot_Diagnostics.publish("PivotESP is homing");
 
     //Homing sequence
-    Pivot_Diagnostics.publish("PivotESP does not have homing yet!");
+    for (size_t i = 0; i < NUM_OPENCAN_MOTORS; ++i) {
+      opencans[i].do_homing();
+    }
 
     //Pivot_Diagnostics.publish("PivotESP is done homing");
   }
