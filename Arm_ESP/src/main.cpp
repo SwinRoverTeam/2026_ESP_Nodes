@@ -114,6 +114,13 @@ constexpr int OPENCAN_MICROSTEP = 400;
 //do not touch this function this tests how many of each motor there is of lichuan
 constexpr size_t  NUM_OPENCAN_MOTORS  = sizeof(OPENCAN_NODE_IDS) / sizeof(OPENCAN_NODE_IDS[0]);
 
+//ARM MAX/MIN POSITIONS 
+double CURRENTpos[] = {0.0, 0.0, 0.0, 0.0, 0.0};
+double MAXpos[] = {0.75, 0.0, 0.20, 0.20, 0.75};
+double MINpos[] = {-0.75, -0.20, -0.20, -0.20, -0.75};
+//Scaler for the joystick 1:x
+double JoyStickScale = 0.1;
+
 // -------- Shared CAN TX (don’t touch logic) --------
 // if you want to read more on this go ahead https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/twai.html#_CPPv418twai_transmitPK18twai_message_t15TickType_t
 int send_can_msg(uint16_t canid, uint8_t len, uint8_t* data, bool rtr){
@@ -205,9 +212,7 @@ void can_check_recv() {
 }
 
 //  -------- CAN: Maximum and Minimum Position -------- //
-double CURRENTpos[] = {0.0, 0.0, 0.0, 0.0, 0.0};
-double MAXpos[] = {0.75, 0.75, 0.75, 0.75, 0.75};
-double MINpos[] = {-0.75, -0.75, -0.75, -0.75, -0.75};
+
 
 
 
@@ -393,7 +398,7 @@ void Arm_Joints_Callback(const void * msgin) {
 
       case 0:
 
-        newPos = CURRENTpos[i] + array_data[i];
+        newPos = CURRENTpos[i] + array_data[i]*JoyStickScale;
 
         if (newPos < MINpos[i]) {
 
@@ -409,7 +414,7 @@ void Arm_Joints_Callback(const void * msgin) {
           
         } else {
 
-          CURRENTpos[i] += array_data[i];
+          CURRENTpos[i] += array_data[i]*JoyStickScale;
 
           Serial.print("Arm_LiCh: ");Serial.print(i);Serial.print(" send:");Serial.println(CURRENTpos[i]);
         }
@@ -421,7 +426,7 @@ void Arm_Joints_Callback(const void * msgin) {
 
       case 1:
           
-        newPos = CURRENTpos[i] + array_data[i];
+        newPos = CURRENTpos[i] + array_data[i]*JoyStickScale;
 
         if (newPos < MINpos[i]) {
 
@@ -437,18 +442,18 @@ void Arm_Joints_Callback(const void * msgin) {
 
         } else {
 
-          CURRENTpos[i] += array_data[i];
+          CURRENTpos[i] += array_data[i]*JoyStickScale;
 
           Serial.print("Arm_LiCh: ");Serial.print(i);Serial.print(" send:");Serial.println(CURRENTpos[i]);
 
         }
-        odrives[0].set_ip_pos(CURRENTpos[i]*ODRIVE_RPS[0], 0.03f,5.0f);
+        odrives[0].set_ip_pos(CURRENTpos[i], 0.03f,5.0f);
 
       break;
 
       case 2:
           
-        newPos = CURRENTpos[i] + array_data[i];
+        newPos = CURRENTpos[i] + array_data[i]*JoyStickScale;
 
         if (newPos < MINpos[i]) {
 
@@ -465,20 +470,20 @@ void Arm_Joints_Callback(const void * msgin) {
 
         } else {
 
-          CURRENTpos[i] += array_data[i];
+          CURRENTpos[i] += array_data[i]*JoyStickScale;
 
           Serial.print("Arm_LiCh: ");Serial.print(i);Serial.print(" send:");Serial.println(CURRENTpos[i]);
 
         } 
         
-        odrives[1].set_ip_pos(CURRENTpos[i]*ODRIVE_RPS[1], 0.03f,5.0f);
+        odrives[1].set_ip_pos(CURRENTpos[i], 0.03f,5.0f);
 
         
       break;
 
       case 3:
 
-        newPos = CURRENTpos[i] + array_data[i];
+        newPos = CURRENTpos[i] + array_data[i]*JoyStickScale;
 
         if (newPos < MINpos[i]) {
 
@@ -495,18 +500,18 @@ void Arm_Joints_Callback(const void * msgin) {
 
         } else {
 
-          CURRENTpos[i] += array_data[i];
+          CURRENTpos[i] += array_data[i]*JoyStickScale;
 
           Serial.print("Arm_LiCh: ");Serial.print(i);Serial.print(" send:");Serial.println(CURRENTpos[i]);
 
         }
-        odrives[2].set_ip_pos(CURRENTpos[i]*ODRIVE_RPS[2], 0.03f,5.0f);
+        odrives[2].set_ip_pos(CURRENTpos[i], 0.03f,5.0f);
         
       break;
 
       case 4:
 
-        newPos = CURRENTpos[i] + array_data[i];
+        newPos = CURRENTpos[i] + array_data[i]*JoyStickScale;
 
         if (newPos < MINpos[i]) {
 
@@ -524,7 +529,7 @@ void Arm_Joints_Callback(const void * msgin) {
 
         } else {
 
-          CURRENTpos[i] += array_data[i];
+          CURRENTpos[i] += array_data[i]*JoyStickScale;
 
           Serial.print("Arm_LiCh: ");Serial.print(i);Serial.print(" send:");Serial.println(CURRENTpos[i]);
           // opencans[i].move_absolute(CURRENTpos[i],4,300,300);
