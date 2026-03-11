@@ -13,7 +13,7 @@
   #include <avr/power.h>
 #endif
 
-#define PIN 3           // Pin connected to NeoPixel
+#define PIN 42           // Pin connected to NeoPixel
 
 // Define W5500 Ethernet Chip Pins
 #define W5500_CS    14    // CS (Chip Select) PIN
@@ -48,23 +48,36 @@ rcl_node_t node;
 rmw_context_t* rmw_context;
 
 // Define Node Name
-const char * node_name = "nodeExample";
+const char * node_name = "Status_ESP";
 
 // Define MicroROS Subscriber and Publisher entities
-genSubscriber MechFailure;                                  // Boolean Subscriber
-genSubscriber HomeSuccess;                                  // Boolean Subscriber
-genSubscriber AutoMode;                                     // Boolean Subscriber
-genSubscriber ManMode;                                      // Boolean Subscriber
-genSubscriber EStopBtn;                                     // Boolean Subscriber
+
+// These subscribers are used to controlling the LED indicator via ROS2 Command line
+// Only use them for testing purposes
+
+// genSubscriber MechFailure;                                  // Enters Mechanical Failure State if true
+// genSubscriber HomeSuccess;                                  // Simulates that Homing is done (that is if it has been properly implemented)
+// genSubscriber AutoMode;                                     // Simulates the rover going into Auto Mode
+// genSubscriber ManMode;                                      // Simulates the rover going into Man Mode
+// genSubscriber ErrorMode;                                     // Simulates the rover goint into Error State
+
+
+// These subscribers are used in the actual ROS2 network
+
+genSubscriber KillSwitch;                                     // Boolean Subscriber (Listens if the whole rover system has to shutdown using software)
 
 
 // Define Callback functions for the Subscribers
-void MechFailCallback(const void * msgin);
-void HomeSuccessCallback(const void * msgin);
-void AutoModeCallback(const void * msgin);
-void ManModeCallback(const void * msgin);
-void EStopCallback(const void * msgin);
 
+
+// void MechFailCallback(const void * msgin);                 
+// void HomeSuccessCallback(const void * msgin);
+// void AutoModeCallback(const void * msgin);
+// void ManModeCallback(const void * msgin);
+// void ErrorMode(const void * msgin);
+// If being used, Make sure to uncomment the function as well (Scroll down)
+
+void KillSwitchCallback(const void * msgin);
 
 
 // Connection status for the HandleConnection()
@@ -83,10 +96,9 @@ ConnectionState connection_state = ConnectionState::Initializing;
 void colorWipe(uint32_t c);
 void LEDStatus();
 
-
-
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(60, PIN, NEO_GRB + NEO_KHZ800);
 
+// Current states of the LED indicator (As of ARch 2026 Season) 
 enum class LEDStates {
   INITIALISING,
   HOMING,                               // Rover is homing                            (LED Colour = Magenta)
@@ -101,12 +113,14 @@ enum class LEDStates {
 
 };
 
+
+// Only used for controlling the LED indicator via ROS2 Commnad Line
 struct StateControl {
-    bool MechFail;
-    bool HomeSuccess;
-    bool ManModeOn;
-    bool AutoModeOn;
-    bool EStop;
+    // bool MechFail;               // Used for controlling the LED states via ROS2
+    // bool HomeSuccess;            // Used for controlling the LED states via ROS2
+    // bool ManModeOn;              // Used for controlling the LED states via ROS2
+    // bool AutoModeOn;             // Used for controlling the LED states via ROS2            
+    bool Error;
 } control;
 
 LEDStates LED_status;
@@ -118,27 +132,30 @@ void setup() {
     if (F_CPU == 16000000) clock_prescale_set(clock_div_1);
   #endif
 
+  // Starting up the LED inidcator
   strip.begin();
   strip.setBrightness(50);
   strip.show();
-
   colorWipe(strip.Color(255, 0, 255));        // Magenta
 
+  // Start Serial Communication
   Serial.begin(115200);
   delay(1000);
+  
+
+  // Begin Ethernet Connection
   Serial.println("Starting Ethernet Connection... ");
-
-
   SPI.begin(W5500_SCK, W5500_MISO, W5500_MOSI, W5500_CS);                                   // Initialize SPI with custom pin configuration    
   Ethernet.init(W5500_CS);                                                                  // Select CS PIN and initialize Ethernet chip
 
+  // Begin MicroROS Custom Transport (Connects to MicroROS agent)
   Serial.println("[INIT] Starting micro-ROS node...");
   set_microros_eth_transports(esp_mac, esp_ip, dns, gateway, agent_ip, agent_port);         // IMPORTANT: Start Micro ROS Transport Connection 
 
   delay(2000);
 
   connection_state = ConnectionState::WaitingForAgent;
-  LED_status = LEDStates::HOMING;
+  LED_status = LEDStates::INITIALISING;
 
 };
 
@@ -180,7 +197,7 @@ void HandleConnectionState() {
       } else {
         // Serial.println("heartbeat");                                                      // Use it for testing if the code is working
         
-        // ADD HERE FOR PUBLISHING VALUES CONTINUOUSL
+        // ADD HERE FOR PUBLISHING VALUES CONTINUOUSLY
 
         rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100));                                  // Spins the executor (Important for Subscribers)
       
@@ -208,13 +225,14 @@ bool CreateEntities() {
   RCCHECK(rclc_node_init_default(&node, node_name, "", &support));
   RCCHECK(rclc_executor_init(&executor, &support.context, 10, &allocator)); // number of subscribers the executor handles is hard coded atm
   
-  // ADD ALL YOUR PUBLISHERS AND SUBSCRIBER INITIALISATION HERE                                                       // Initialise String Publisher
+  // ADD ALL YOUR PUBLISHERS AND SUBSCRIBER INITIALISATION HERE                                           
 
-  MechFailure.init(&node, "MechFailure", &executor, MechFailCallback, BOOL);                           // Initialise Boolean Subscriber
-  HomeSuccess.init(&node, "HomeSuccess", &executor, HomeSuccessCallback, BOOL);                           // Initialise Boolean Subscriber
-  AutoMode.init(&node, "AutoMode", &executor, AutoModeCallback, BOOL);                           // Initialise Boolean Subscriber
-  ManMode.init(&node, "ManMode", &executor, ManModeCallback, BOOL);
-  EStopBtn.init(&node, "EStopBtn", &executor, EStopCallback, BOOL);
+  // MechFailure.init(&node, "MechFailure", &executor, MechFailCallback, BOOL);                           // Only used for controlling the LED indicator via ROS2 Command Line
+  // HomeSuccess.init(&node, "HomeSuccess", &executor, HomeSuccessCallback, BOOL);                        // Only used for controlling the LED indicator via ROS2 Command Line
+  // AutoMode.init(&node, "AutoMode", &executor, AutoModeCallback, BOOL);                                 // Only used for controlling the LED indicator via ROS2 Command Line
+  // ManMode.init(&node, "ManMode", &executor, ManModeCallback, BOOL);                                    // Only used for controlling the LED indicator via ROS2 Command Line
+
+  KillSwitch.init(&node, "KillSwitch", &executor, KillSwitchCallback, BOOL);
 
   return true;
 }
@@ -228,11 +246,12 @@ void DestroyEntities() {
     
     // ADD FUNCTION THAT DESTROYS PUBLISHER AND SUBSCRIBER HERE
 
-    MechFailure.destroy(&node);                           // Initialise Boolean Subscriber
-    HomeSuccess.destroy(&node);                           // Initialise Boolean Subscriber
-    AutoMode.destroy(&node);                           // Initialise Boolean Subscriber
-    ManMode.destroy(&node);
-    EStopBtn.destroy(&node);
+    // MechFailure.destroy(&node);                           // Only used for controlling the LED indicator via ROS2 Command Line
+    // HomeSuccess.destroy(&node);                           // Only used for controlling the LED indicator via ROS2 Command Line
+    // AutoMode.destroy(&node);                              // Only used for controlling the LED indicator via ROS2 Command Line
+    // ManMode.destroy(&node);                               // Only used for controlling the LED indicator via ROS2 Command Line
+    
+    KillSwitch.destroy(&node);
 
     rclc_executor_fini(&executor);                              // Destroy Executors
     RCCHECK(rcl_node_fini(&node));                              // Destroy Node
@@ -251,59 +270,61 @@ void error_loop() {
 // Create your callback functions here.
 
 // Example Callback funtion for Boolean values
-void MechFailCallback(const void * msgin) {
+
+
+// void MechFailCallback(const void * msgin) {
+
+//   const std_msgs__msg__Bool * msg_bool = (const std_msgs__msg__Bool *)msgin;                  // IMPORTANT: DO NOT FORGET TO ADD THIS !!!
+
+//   // Enter code here for when the subscriber receives a message.
+//   control.MechFail = msg_bool->data;
+
+//   Serial.print("Mechanical Failure: ");
+//   Serial.println(control.MechFail);
+// }
+
+// void HomeSuccessCallback(const void * msgin) {
+
+//   const std_msgs__msg__Bool * msg_bool = (const std_msgs__msg__Bool *)msgin;                  // IMPORTANT: DO NOT FORGET TO ADD THIS !!!
+
+//   // Enter code here for when the subscriber receives a message.
+//   control.HomeSuccess = msg_bool->data;
+
+//   Serial.print("Homing Status: ");
+//   Serial.println(control.HomeSuccess);
+// }
+
+// void AutoModeCallback(const void * msgin) {
+
+//   const std_msgs__msg__Bool * msg_bool = (const std_msgs__msg__Bool *)msgin;                  // IMPORTANT: DO NOT FORGET TO ADD THIS !!!
+
+//   // Enter code here for when the subscriber receives a message.
+//   control.AutoModeOn = msg_bool->data;
+
+//   Serial.print("Auto Mode Status: ");
+//   Serial.println(control.AutoModeOn);
+// }
+
+// void ManModeCallback(const void * msgin) {
+
+//   const std_msgs__msg__Bool * msg_bool = (const std_msgs__msg__Bool *)msgin;                  // IMPORTANT: DO NOT FORGET TO ADD THIS !!!
+
+//   // Enter code here for when the subscriber receives a message.
+//   control.ManModeOn = msg_bool->data;
+
+//   Serial.print("Manual Mode Status: ");
+//   Serial.println(control.ManModeOn);
+// }
+
+void KillSwitchCallback(const void * msgin) {
 
   const std_msgs__msg__Bool * msg_bool = (const std_msgs__msg__Bool *)msgin;                  // IMPORTANT: DO NOT FORGET TO ADD THIS !!!
 
   // Enter code here for when the subscriber receives a message.
-  control.MechFail = msg_bool->data;
-
-  Serial.print("Mechanical Failure: ");
-  Serial.println(control.MechFail);
-}
-
-void HomeSuccessCallback(const void * msgin) {
-
-  const std_msgs__msg__Bool * msg_bool = (const std_msgs__msg__Bool *)msgin;                  // IMPORTANT: DO NOT FORGET TO ADD THIS !!!
-
-  // Enter code here for when the subscriber receives a message.
-  control.HomeSuccess = msg_bool->data;
-
-  Serial.print("Homing Status: ");
-  Serial.println(control.HomeSuccess);
-}
-
-void AutoModeCallback(const void * msgin) {
-
-  const std_msgs__msg__Bool * msg_bool = (const std_msgs__msg__Bool *)msgin;                  // IMPORTANT: DO NOT FORGET TO ADD THIS !!!
-
-  // Enter code here for when the subscriber receives a message.
-  control.AutoModeOn = msg_bool->data;
-
-  Serial.print("Auto Mode Status: ");
-  Serial.println(control.AutoModeOn);
-}
-
-void ManModeCallback(const void * msgin) {
-
-  const std_msgs__msg__Bool * msg_bool = (const std_msgs__msg__Bool *)msgin;                  // IMPORTANT: DO NOT FORGET TO ADD THIS !!!
-
-  // Enter code here for when the subscriber receives a message.
-  control.ManModeOn = msg_bool->data;
-
-  Serial.print("Manual Mode Status: ");
-  Serial.println(control.ManModeOn);
-}
-
-void EStopCallback(const void * msgin) {
-
-  const std_msgs__msg__Bool * msg_bool = (const std_msgs__msg__Bool *)msgin;                  // IMPORTANT: DO NOT FORGET TO ADD THIS !!!
-
-  // Enter code here for when the subscriber receives a message.
-  control.EStop = msg_bool->data;
+  control.Error = msg_bool->data;
 
   Serial.print("EStop Status: ");
-  Serial.println(control.EStop);
+  Serial.println(control.Error);
 }
 
 
@@ -323,91 +344,99 @@ void LEDStatus() {
     case LEDStates::INITIALISING:
       Serial.println("Current State: Initialising");
 
-    break;
-
-    case LEDStates::HOMING:
-      Serial.println("Current State: HOMING");
-      colorWipe(strip.Color(255, 0, 255));        // Magenta
-
-      if (connection_state != ConnectionState::Connected) {
-        LED_status = LEDStates::LED_ERR;
-      }
-
-      if (control.EStop) {
-        LED_status = LEDStates::ROVER_ERR;
-      }
-
-      if (control.MechFail) {
-        LED_status = LEDStates::MECH_LOCK;
-      }
-
-      if (control.HomeSuccess) {
-        LED_status = LEDStates::IDLE;
-      }
-      
-    break;
-
-    case LEDStates::IDLE:
-      Serial.println("Current State: IDLE");
-      colorWipe(strip.Color(255, 255, 255));      // White
-
-      if (connection_state != ConnectionState::Connected) {
-        LED_status = LEDStates::LED_ERR;
-      }
-
-      if (control.EStop) {
-        LED_status = LEDStates::ROVER_ERR;
-      }
-
-      if (control.AutoModeOn && !control.ManModeOn) {
-        LED_status = LEDStates::AUTO_IDLE;
-      }
-
-      if (control.ManModeOn && !control.AutoModeOn) {
+      if (connection_state == ConnectionState::Connected) {
         LED_status = LEDStates::MANUAL;
       }
 
-      if (control.AutoModeOn && control.ManModeOn) {
-        LED_status = LEDStates::STATE_ERR;
-      }
-
     break;
 
-    case LEDStates::AUTO_IDLE:
-      Serial.println("Current State: AUTO_IDLE");
-      colorWipe(strip.Color(0, 255, 255));        // Cyan
+    // Will uncomment when Homing has been properly setup on the rover
 
-      delay(5000);
+    // case LEDStates::HOMING:
+    //   Serial.println("Current State: HOMING");
+    //   colorWipe(strip.Color(255, 0, 255));        // Magenta
 
-      LED_status = LEDStates::AUTO_START;
+    //   if (connection_state != ConnectionState::Connected) {
+    //     LED_status = LEDStates::LED_ERR;
+    //   }
 
+    //   if (control.EStop) {
+    //     LED_status = LEDStates::ROVER_ERR;
+    //   }
+
+    //   if (control.MechFail) {
+    //     LED_status = LEDStates::MECH_LOCK;
+    //   }
+
+    //   if (control.HomeSuccess) {
+    //     LED_status = LEDStates::IDLE;
+    //   }
+      
     break;
 
-    case LEDStates::AUTO_START:
-      Serial.println("Current State: AUTO_START");
-      colorWipe(strip.Color(0, 255, 0));          // Green
+    // case LEDStates::IDLE:                                          // Will be used in the future season
+    //   Serial.println("Current State: IDLE");
+    //   colorWipe(strip.Color(255, 255, 255));      // White
 
-      if (connection_state != ConnectionState::Connected) {
-        LED_status = LEDStates::LED_ERR;
-      }
+    //   if (connection_state != ConnectionState::Connected) {
+    //     LED_status = LEDStates::LED_ERR;
+    //   }
 
-      if (control.EStop) {
-        LED_status = LEDStates::ROVER_ERR;
-      }
+    //   if (control.EStop) {
+    //     LED_status = LEDStates::ROVER_ERR;
+    //   }
 
-      if (control.MechFail) {
-        LED_status = LEDStates::MECH_LOCK;
-      }
+    //   if (control.AutoModeOn && !control.ManModeOn) {
+    //     LED_status = LEDStates::AUTO_IDLE;
+    //   }
 
-      if (control.ManModeOn) {
-        LED_status = LEDStates::STATE_ERR;
-      }
+    //   if (control.ManModeOn && !control.AutoModeOn) {
+    //     LED_status = LEDStates::MANUAL;
+    //   }
 
-      if (!control.AutoModeOn) {
-        LED_status = LEDStates::IDLE;
-      }
+    //   if (control.AutoModeOn && control.ManModeOn) {
+    //     LED_status = LEDStates::STATE_ERR;
+    //   }
 
-    break;
+    // break;
+
+    // 
+
+    // case LEDStates::AUTO_IDLE:                                       // Will be used in future seasons
+    //   Serial.println("Current State: AUTO_IDLE");
+    //   colorWipe(strip.Color(0, 255, 255));        // Cyan
+
+    //   delay(5000);
+
+    //   LED_status = LEDStates::AUTO_START;
+
+    // break;
+
+    // case LEDStates::AUTO_START:                                          // Will be used in the future season
+    //   Serial.println("Current State: AUTO_START");
+    //   colorWipe(strip.Color(0, 255, 0));          // Green
+
+    //   if (connection_state != ConnectionState::Connected) {
+    //     LED_status = LEDStates::LED_ERR;
+    //   }
+
+    //   if (control.EStop) {
+    //     LED_status = LEDStates::ROVER_ERR;
+    //   }
+
+    //   if (control.MechFail) {
+    //     LED_status = LEDStates::MECH_LOCK;
+    //   }
+
+    //   if (control.ManModeOn) {
+    //     LED_status = LEDStates::STATE_ERR;
+    //   }
+
+    //   if (!control.AutoModeOn) {
+    //     LED_status = LEDStates::IDLE;
+    //   }
+
+    // break;
 
     case LEDStates::MANUAL:
       Serial.println("Current State: MANUAL");
@@ -417,21 +446,21 @@ void LEDStatus() {
         LED_status = LEDStates::LED_ERR;
       }
 
-      if (control.EStop) {
+      if (control.Error) {
         LED_status = LEDStates::ROVER_ERR;
       }
 
-      if (control.MechFail) {
-        LED_status = LEDStates::MECH_LOCK;
-      }
+      // if (control.MechFail) {
+      //   LED_status = LEDStates::MECH_LOCK;
+      // }
 
-      if (control.AutoModeOn) {
-        LED_status = LEDStates::STATE_ERR;
-      }
+      // if (control.AutoModeOn) {
+      //   LED_status = LEDStates::STATE_ERR;
+      // }
 
-      if (!control.ManModeOn) {
-        LED_status = LEDStates::IDLE;
-      }
+      // if (!control.ManModeOn) {
+      //   LED_status = LEDStates::IDLE;
+      // }
 
     break;
 
@@ -443,59 +472,63 @@ void LEDStatus() {
         LED_status = LEDStates::LED_ERR;
       }
 
-      if (control.EStop) {
+      if (control.Error) {
         LED_status = LEDStates::ROVER_ERR;
       }
 
-      if (control.MechFail) {
-        LED_status = LEDStates::MECH_LOCK;
-      }
+      // if (control.MechFail) {
+      //   LED_status = LEDStates::MECH_LOCK;
+      // }
       
     break;
 
-    case LEDStates::MECH_LOCK:
-      Serial.println("Current State: MECH_LOCK");
-      colorWipe(strip.Color(255, 255, 0));        // Yellow
+    // case LEDStates::MECH_LOCK:
+    //   Serial.println("Current State: MECH_LOCK");
+    //   colorWipe(strip.Color(255, 255, 0));        // Yellow
 
-      if (connection_state != ConnectionState::Connected) {
-        LED_status = LEDStates::LED_ERR;
-      }
+    //   if (connection_state != ConnectionState::Connected) {
+    //     LED_status = LEDStates::LED_ERR;
+    //   }
 
-      if (control.EStop) {
-        LED_status = LEDStates::ROVER_ERR;
-      }
+    //   if (ccontrol.Error) {
+    //     LED_status = LEDStates::ROVER_ERR;
+    //   }
       
-    break;
+    // break;
 
     case LEDStates::LED_ERR:
       Serial.println("Current State: LED_ERR");
       colorWipe(strip.Color(255, 0, 255));        // Magenta
 
       if (connection_state == ConnectionState::Connected) {
-        LED_status = LEDStates::HOMING;
+        LED_status = LEDStates::INITIALISING;
       }
 
-      if (connection_state == ConnectionState::Connected && control.HomeSuccess ) {
-        LED_status = LEDStates::IDLE;
-      }
+      // if (connection_state == ConnectionState::Connected) {
+      //   LED_status = LEDStates::HOMING;
+      // }
 
-      if (connection_state == ConnectionState::Connected && control.AutoModeOn) {
-        LED_status = LEDStates::AUTO_START;
-      }
+      // if (connection_state == ConnectionState::Connected && control.HomeSuccess ) {
+      //   LED_status = LEDStates::IDLE;
+      // }
 
-      if (connection_state == ConnectionState::Connected && control.ManModeOn) {
-        LED_status = LEDStates::MANUAL;
-      }
+      // if (connection_state == ConnectionState::Connected && control.AutoModeOn) {
+      //   LED_status = LEDStates::AUTO_START;
+      // }
 
-      if (connection_state == ConnectionState::Connected && control.AutoModeOn && control.ManModeOn){
-        LED_status = LEDStates::STATE_ERR;
-      }
+      // if (connection_state == ConnectionState::Connected && control.ManModeOn) {
+      //   LED_status = LEDStates::MANUAL;
+      // }
 
-      if (connection_state == ConnectionState::Connected && control.MechFail) {
-        LED_status = LEDStates::MECH_LOCK;
-      }
+      // if (connection_state == ConnectionState::Connected && control.AutoModeOn && control.ManModeOn){
+      //   LED_status = LEDStates::STATE_ERR;
+      // }
 
-      if (connection_state == ConnectionState::Connected && control.EStop) {
+      // if (connection_state == ConnectionState::Connected && control.MechFail) {
+      //   LED_status = LEDStates::MECH_LOCK;
+      // }
+
+      if (connection_state == ConnectionState::Connected && control.Error) {
         LED_status = LEDStates::ROVER_ERR;
       }
       
