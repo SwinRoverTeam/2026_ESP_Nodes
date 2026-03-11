@@ -13,7 +13,7 @@
   #include <avr/power.h>
 #endif
 
-#define PIN 42           // Pin connected to NeoPixel
+#define PIN 48           // Pin connected to NeoPixel (GPIO 48)
 
 // Define W5500 Ethernet Chip Pins
 #define W5500_CS    14    // CS (Chip Select) PIN
