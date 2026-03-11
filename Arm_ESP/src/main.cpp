@@ -119,7 +119,7 @@ double CURRENTpos[] = {0.0, 0.0, 0.0, 0.0, 0.0};
 double MAXpos[] = {0.75, 0.0, 0.20, 0.20, 0.75};
 double MINpos[] = {-0.75, -0.20, -0.20, -0.20, -0.75};
 //Scaler for the joystick 1:x
-double JoyStickScale = 0.1;
+double JoyStickScale = 0.05;
 
 // -------- Shared CAN TX (don’t touch logic) --------
 // if you want to read more on this go ahead https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/twai.html#_CPPv418twai_transmitPK18twai_message_t15TickType_t
@@ -447,7 +447,7 @@ void Arm_Joints_Callback(const void * msgin) {
           Serial.print("Arm_LiCh: ");Serial.print(i);Serial.print(" send:");Serial.println(CURRENTpos[i]);
 
         }
-        odrives[0].set_ip_pos(CURRENTpos[i], 0.03f,5.0f);
+        odrives[0].set_ip_pos(CURRENTpos[i], 0.005f,5.0f);
 
       break;
 
@@ -476,7 +476,7 @@ void Arm_Joints_Callback(const void * msgin) {
 
         } 
         
-        odrives[1].set_ip_pos(CURRENTpos[i], 0.03f,5.0f);
+        odrives[1].set_ip_pos(CURRENTpos[i], 0.005f,5.0f);
 
         
       break;
@@ -505,7 +505,7 @@ void Arm_Joints_Callback(const void * msgin) {
           Serial.print("Arm_LiCh: ");Serial.print(i);Serial.print(" send:");Serial.println(CURRENTpos[i]);
 
         }
-        odrives[2].set_ip_pos(CURRENTpos[i], 0.03f,5.0f);
+        odrives[2].set_ip_pos(CURRENTpos[i], 0.005f,5.0f);
         
       break;
 
