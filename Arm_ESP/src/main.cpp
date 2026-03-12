@@ -116,8 +116,8 @@ constexpr size_t  NUM_OPENCAN_MOTORS  = sizeof(OPENCAN_NODE_IDS) / sizeof(OPENCA
 
 //ARM MAX/MIN POSITIONS 
 double CURRENTpos[] = {0.0, 0.0, 0.0, 0.0, 0.0};
-double MAXpos[] = {0.75, 0.0, 0.20, 0.20, 0.75};
-double MINpos[] = {-0.75, -0.20, -0.20, -0.20, -0.75};
+double MAXpos[] = {0.40, 0.0, 0.20, 0.80, 0.75};
+double MINpos[] = {-0.40, -0.20, -0.20, -0.80, -0.75};
 //Scaler for the joystick 1:x
 double JoyStickScale = 0.05;
 
@@ -419,7 +419,7 @@ void Arm_Joints_Callback(const void * msgin) {
           Serial.print("Arm_LiCh: ");Serial.print(i);Serial.print(" send:");Serial.println(CURRENTpos[i]);
         }
         
-        opencans[i].move_absolute(CURRENTpos[i]*OPENCAN_MICROSTEP,4,500,500); 
+        opencans[i].move_absolute(CURRENTpos[i]*OPENCAN_MICROSTEP,2,500,500); 
 
 
       break;
