@@ -19,12 +19,12 @@ constexpr int W5500_INT = 10;                           // Interrupt PIN
 constexpr int W5500_MISO = 12;                          // MISO PIN
 constexpr int W5500_MOSI = 11;                          // MOSI PIN
 constexpr int W5500_SCK = 13;                           // Serial Clock PIN
-uint8_t S2_RX = 18;
-uint8_t S2_TX = 17;
+uint8_t S2_RX = 16;
+uint8_t S2_TX = 18;
 
 uint8_t NUM_CELLS = 12; 
 uint16_t BMS_COMMS_TIMEOUT_ms = 1000;
-PreCharge Pre_Charger(19, 20);
+//PreCharge Pre_Charger(39, 15); enable for remote pre-charge status
 JikongMessenger JKmessenger(&Serial2, BMS_COMMS_TIMEOUT_ms, NUM_CELLS);
 
 // Network Configuration
@@ -61,7 +61,6 @@ rmw_context_t* rmw_context;
 const char* node_name = "BMS_Diagnostics";
 
 // Define MicroROS Subscriber and Publisher entities
-genPublisher Pre_Charge; 
 genPublisher BMS_Diagnostics;
 
 genSubscriber Set_BMS;                                 
@@ -113,16 +112,12 @@ String formatString(){
   const JikongMessenger::Status_Flags* status = JKmessenger.get_status_flags(); 
   JsonDocument doc;
   JsonObject bms = doc["BMS Data"].to<JsonObject>();
-  bms["power_tube_temp_dC"] = JKmessenger.get_power_tube_temp_dC();
-  bms["battery_temp_dC"] = JKmessenger.get_battery_temp_dC(); 
-  bms["battery_box_temp_dC"] = JKmessenger.get_battery_box_temp_dC();
-  bms["total_voltage_mV"] = JKmessenger.get_total_voltage_mV(); 
+  //bms["power_tube_temp_dC"] = JKmessenger.get_power_tube_temp_dC(); 
   bms["get_battery_temp_dC"] = JKmessenger.get_battery_temp_dC(); 
   bms["battery_box_temp_dC"] = JKmessenger.get_battery_box_temp_dC();
-  bms["get_total_voltage_mV"] = JKmessenger.get_total_voltage_mV();
   bms["current_dA()"] = JKmessenger.get_current_dA(); 
   bms["remaining_capacity_pct"] = JKmessenger.get_remaining_capacity_pct(); 
-  bms["temp_sensor_count_n"] = JKmessenger.get_temp_sensor_count_n();
+  /*bms["temp_sensor_count_n"] = JKmessenger.get_temp_sensor_count_n();
   bms["cycle_count"] = JKmessenger.get_cycle_count(); 
   bms["total_cycle_capacity_Ah"] = JKmessenger.get_total_cycle_capacity_Ah(); 
   bms["string_count_n"] = JKmessenger.get_string_count_n();
@@ -156,27 +151,27 @@ String formatString(){
   bms["battery_string_setting"] = JKmessenger.get_battery_string_setting();
   bms["battery_capacity_setting"] = JKmessenger.get_battery_capacity_setting(); 
   bms["battery_capacity_Ah"] = JKmessenger.get_battery_capacity_Ah(); 
-  bms["active_balance"] = status->balance_switch_state ? "ON" : "OFF";  
+  bms["active_balance"] = status->balance_switch_state ? "ON" : "OFF"; */  
   bms["charge_mos"] = status->charging_MOS_status ? "ON" : "OFF"; 
   bms["discharge_mos"] = status->discharge_MOS_status ? "ON" : "OFF"; 
-  bms["low_capacity"] = warnings->low_capacity ? "WARNING!" : "no alarm"; 
-  bms["MOS_tube_OT"] = warnings->MOS_tube_OT ? "WARNING!" : "no alarm";
-  bms["charging_OV"] = warnings->charging_OV ? "WARNING!" : "no alarm";
-  bms["discharge_UV"] = warnings->discharge_UV ? "WARNING!" : "no alarm";
-  bms["battery_OT"] = warnings->battery_OT ? "WARNING!" : "no alarm";
-  bms["charging_OC"] = warnings->charging_OC ? "WARNING!" : "no alarm";
-  bms["discharge_OC"] = warnings->discharge_OC ? "WARNING!" : "no alarm";
-  bms["Cell_pressure_differential"] = warnings->Cell_pressure_differential ? "WARNING!" : "no alarm";
-  bms["Battery_Box_Over_Temp"] = warnings->BB_OT ? "WARNING!" : "no alarm";
-  bms["battery_low_temp"] = warnings->battery_low_temp ? "WARNING!" : "no alarm";
-  bms["monomer_Over_Voltage"] = warnings->monomer_OV ? "WARNING!" : "no alarm";
-  bms["monomer_Under_Voltage"] = warnings->monomer_UV ? "WARNING!" : "no alarm";  
-  bms["protection_309A"] = warnings->protection_309A ? "WARNING!" : "no alarm";
+  if(warnings->low_capacity) bms["low_capacity"] = warnings->low_capacity ? "WARNING!" : "no alarm"; 
+  if(warnings->MOS_tube_OT) bms["MOS_tube_OT"] = warnings->MOS_tube_OT ? "WARNING!" : "no alarm";
+  if(warnings->charging_OV) bms["charging_OV"] = warnings->charging_OV ? "WARNING!" : "no alarm";
+  if(warnings->discharge_UV) bms["discharge_UV"] = warnings->discharge_UV ? "WARNING!" : "no alarm";
+  if(warnings->battery_OT) bms["battery_OT"] = warnings->battery_OT ? "WARNING!" : "no alarm";
+  if(warnings->charging_OC) bms["charging_OC"] = warnings->charging_OC ? "WARNING!" : "no alarm";
+  if(warnings->discharge_OC) bms["discharge_OC"] = warnings->discharge_OC ? "WARNING!" : "no alarm";
+  if(warnings->Cell_pressure_differential) bms["Cell_pressure_differential"] = warnings->Cell_pressure_differential ? "WARNING!" : "no alarm";
+  if(bms["Battery_Box_Over_Temp"]) bms["Battery_Box_Over_Temp"] = warnings->BB_OT ? "WARNING!" : "no alarm";
+  if(warnings->battery_low_temp) bms["battery_low_temp"] = warnings->battery_low_temp ? "WARNING!" : "no alarm";
+  if(warnings->monomer_OV) bms["monomer_Over_Voltage"] = warnings->monomer_OV ? "WARNING!" : "no alarm";
+  if(warnings->monomer_UV) bms["monomer_Under_Voltage"] = warnings->monomer_UV ? "WARNING!" : "no alarm";  
+  if(warnings->protection_309A) bms["protection_309A"] = warnings->protection_309A ? "WARNING!" : "no alarm";
   bms["battery_conn_status"] = status->battery_conn_status ? "ON" : "OFF"; 
+  bms["total_voltage_mV"] = JKmessenger.get_total_voltage_mV();
 
   String output;
   serializeJson(doc, output);
-  Serial.println(output);
   return output;
 }
 
@@ -216,12 +211,9 @@ void HandleConnectionState() {
         Serial.println("heartbeat");                                                      // Use it for testing if the code is working
         
       // ADD HERE FOR PUBLISHING VALUES CONTINUOUSLY
-        //String data = formatString();
-        //const char *a = data.c_str();
         const char *BMS_data = formatString().c_str();
 
         BMS_Diagnostics.publish(BMS_data);
-        Pre_Charge.publish(Pre_Charger.contactor_status() ? "Pre-charging complete" : "Pre-charging.");
         rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100));                                  // Spins the executor (Important for Subscribers)
       }
       break;
@@ -248,8 +240,7 @@ bool CreateEntities() {
   RCCHECK(rclc_executor_init(&executor, &support.context, 10, &allocator)); 
   
   // initilize publisher and subscribers
-  BMS_Diagnostics.init(&node, "BMS_Diagnostics", STRING); 
-  Pre_Charge.init(&node, "Pre_Charge", STRING);                             
+  BMS_Diagnostics.init(&node, "BMS_Diagnostics", STRING);                              
                          
   KillSwitch.init(&node, "KillSwitch", &executor, Kill_Switch_Call_Back, BOOL);                                               
   Set_BMS.init(&node, "Set_BMS", &executor,  Set_BMS_Call_Back, INT32_ARRAY);
@@ -264,8 +255,7 @@ void DestroyEntities() {
     (void)rmw_uros_set_context_entity_destroy_session_timeout(rmw_context, 0);
     
     // ADD FUNCTION THAT DESTROYS PUBLISHER AND SUBSCRIBER HERE
-    BMS_Diagnostics.destroy(&node);                                 
-    Pre_Charge.destroy(&node);                                   
+    BMS_Diagnostics.destroy(&node);                                                                   
     Set_BMS.destroy(&node);                                                                  
     KillSwitch.destroy(&node);  
     BMS_Reset.destroy(&node);                                   
