@@ -21,11 +21,13 @@ constexpr int W5500_MOSI = 11;                          // MOSI PIN
 constexpr int W5500_SCK = 13;                           // Serial Clock PIN
 uint8_t S2_RX = 16;
 uint8_t S2_TX = 18;
+const unsigned long TIME_THRESHOLD = 5000;
+unsigned long PREV_TIME;
 
 uint8_t NUM_CELLS = 12; 
 uint16_t BMS_COMMS_TIMEOUT_ms = 1000;
 //PreCharge Pre_Charger(39, 15); enable for remote pre-charge status
-JikongMessenger JKmessenger(&Serial2, BMS_COMMS_TIMEOUT_ms, NUM_CELLS);
+JikongMessenger JKmessenger(&Serial2, BMS_COMMS_TIME OUT_ms, NUM_CELLS);
 
 // Network Configuration
 byte esp_mac[] = { 0xDE, 0xAD, 0xAF, 0x91, 0x5E, 0x69 };    // Mac address of ESP32 (Make sure its unique for each ESP32)
@@ -162,7 +164,7 @@ String formatString(){
   if(warnings->charging_OC) bms["charging_OC"] = warnings->charging_OC ? "WARNING!" : "no alarm";
   if(warnings->discharge_OC) bms["discharge_OC"] = warnings->discharge_OC ? "WARNING!" : "no alarm";
   if(warnings->Cell_pressure_differential) bms["Cell_pressure_differential"] = warnings->Cell_pressure_differential ? "WARNING!" : "no alarm";
-  if(bms["Battery_Box_Over_Temp"]) bms["Battery_Box_Over_Temp"] = warnings->BB_OT ? "WARNING!" : "no alarm";
+  if(warnings->BB_OT) bms["Battery_Box_Over_Temp"] = warnings->BB_OT ? "WARNING!" : "no alarm";
   if(warnings->battery_low_temp) bms["battery_low_temp"] = warnings->battery_low_temp ? "WARNING!" : "no alarm";
   if(warnings->monomer_OV) bms["monomer_Over_Voltage"] = warnings->monomer_OV ? "WARNING!" : "no alarm";
   if(warnings->monomer_UV) bms["monomer_Under_Voltage"] = warnings->monomer_UV ? "WARNING!" : "no alarm";  
@@ -176,7 +178,6 @@ String formatString(){
 }
 
 void loop() {
-  JKmessenger.request_data();
   HandleConnectionState();
 }
 
@@ -208,13 +209,15 @@ void HandleConnectionState() {
         Serial.println("[ROS] Agent disconnected!");
         connection_state = ConnectionState::Disconnected;
       } else {
-        Serial.println("heartbeat");                                                      // Use it for testing if the code is working
-        
-      // ADD HERE FOR PUBLISHING VALUES CONTINUOUSLY
-        const char *BMS_data = formatString().c_str();
-
-        BMS_Diagnostics.publish(BMS_data);
-        rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100));                                  // Spins the executor (Important for Subscribers)
+        if(millis() - PREV_TIME >= TIME_THRESHOLD){
+          JKmessenger.request_data();                                                   
+          
+        // ADD HERE FOR PUBLISHING VALUES CONTINUOUSLY
+          String BMS_data = formatString();
+          BMS_Diagnostics.publish(BMS_data.c_str());
+          rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100)); 
+          PREV_TIME = millis(); 
+        }                                 
       }
       break;
 
