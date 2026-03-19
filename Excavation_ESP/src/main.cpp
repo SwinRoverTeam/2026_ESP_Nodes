@@ -77,9 +77,19 @@ ConnectionState connection_state = ConnectionState::Initializing;
 //set lichuan motors to as many as needed and and there can_id addresses
 constexpr uint8_t OPENCAN_NODE_IDS[]  = {8};
 constexpr uint8_t OPENCAN_GEAR_RATIOS[] = {50};
-constexpr uint8_t OPENCAN_MICROSTEP = 400;
+constexpr int OPENCAN_MICROSTEP = 400;
 //do not touch this function this tests how many of each motor there is of lichuan
 constexpr size_t  NUM_OPENCAN_MOTORS  = sizeof(OPENCAN_NODE_IDS) / sizeof(OPENCAN_NODE_IDS[0]);
+
+//Motor limit
+double CURRENTpos = 0.0;
+double MAXpos = 2.0;
+double MINpos = 0.0;
+double newPos;
+
+//How much joystick input is multiplied by for final movement.
+double JoyStickScale = 0.50;
+
 
 // -------- Shared CAN TX (don’t touch logic) --------
 // if you want to read more on this go ahead https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/twai.html#_CPPv418twai_transmitPK18twai_message_t15TickType_t
@@ -95,7 +105,7 @@ int send_can_msg(uint16_t canid, uint8_t len, uint8_t* data, bool rtr){
     if (len > 8) len = 8; 
     msg.data_length_code = len;
     if (!rtr && len && data) memcpy(msg.data, data, len);
-// pdMS_TO_TICKS converts milliseconds to RTOS ticks
+    // pdMS_TO_TICKS converts milliseconds to RTOS ticks
     return (twai_transmit(&msg, pdMS_TO_TICKS(500)) == ESP_OK) ? 0 : -1;
 }
 
@@ -181,7 +191,7 @@ void setup() {
 
 void loop() {
   HandleConnectionState();
-  delay(1000);
+  delay(10);
   can_check_recv();
 }
 
@@ -267,7 +277,6 @@ void error_loop() {
   Serial.println("An error has occured. Restarting...");
   delay(2000);
   ESP.restart();
-
 };
 
 // ========================================= CALLBACK FUNCTIONS ========================================= //
@@ -283,6 +292,21 @@ void Excavation_Fork_Callback(const void * msgin) {
   // Enter code here for when the subscriber receives a message.
   //Serial.print("Double value: ");
   //Serial.println(msg_double->data);
-  opencans[0].move_absolute(static_cast<int32_t>(msg_double->data)/1000*OPENCAN_MICROSTEP,4,300,300);
+  
+  newPos = CURRENTpos + msg_double->data*JoyStickScale;
+  if (newPos < MINpos) {
+    CURRENTpos = MINpos;
+    Serial.println("MIN");
+  } 
+  else if (newPos > MAXpos) {
+    CURRENTpos = MAXpos;
+    Serial.println("MAX");
+  } 
+  else {
+    CURRENTpos = newPos;
+    Serial.println(CURRENTpos);
+  }
+  
+  opencans[0].move_absolute(CURRENTpos*OPENCAN_MICROSTEP,8,500,500);
 
 }
