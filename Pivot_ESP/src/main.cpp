@@ -7,6 +7,8 @@
 #include "Publisher/genPublisher.h"                     // Include this library to use the publisher      
 #include "Subscriber/genSubscriber.h"                   // Include this library to use the Subscriber
 #include <MicroROS_Transport.h>                         // IMPORTANT: MAKE SURE TO INCLUDE FOR CONNECTION BETWEEN THE ESP AND THE MICRO ROS AGENT TO WORK
+#include <chrono>
+
 
 // Define W5500 Ethernet Chip Pins
 #define W5500_CS    14    // CS (Chip Select) PIN
@@ -17,7 +19,7 @@
 #define W5500_SCK   13    // Serial Clock PIN
 
 // Network Configuration
-byte esp_mac[] = { 0xDE, 0xAD, 0xAF, 0x91, 0x3E, 0x69 };    // Mac address of ESP32 (Make sure its unique for each ESP32)
+byte esp_mac[] = { 0xDE, 0xFD, 0xAF, 0x91, 0x3E, 0x63 };    // Mac address of ESP32 (Make sure its unique for each ESP32)
 IPAddress esp_ip(192, 168, 0, 12);                          // IP address of ESP32   (Make sure its unique for each ESP32)
 IPAddress dns(192, 168, 0, 1);                              // DNS Server           (Modify if necessary)
 IPAddress gateway(192, 168, 0, 1);                          // Default Gateway      (Modify if necessary)
@@ -114,6 +116,12 @@ constexpr int OPENCAN_MICROSTEP = 400;
 //do not touch this function this tests how many of each motor there is of lichuan
 constexpr size_t  NUM_OPENCAN_MOTORS  = sizeof(OPENCAN_NODE_IDS) / sizeof(OPENCAN_NODE_IDS[0]);;
 
+//Variables that track the last time a GIM was moved to avoid disconnection causing continued GIM motion
+int MaxDisconnectionTime_ms = 300;
+std::chrono::time_point<std::chrono::steady_clock> current_time;
+std::chrono::time_point<std::chrono::steady_clock> LastGimMove_time;
+std::chrono::milliseconds SinceLastGimMove_time;
+
 // -------- Shared CAN TX (don’t touch logic) --------
 // if you want to read more on this go ahead https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/twai.html#_CPPv418twai_transmitPK18twai_message_t15TickType_t
 int send_can_msg(uint16_t canid, uint8_t len, uint8_t* data, bool rtr){
@@ -144,7 +152,7 @@ bool init_twai(gpio_num_t tx, gpio_num_t rx) {
         return false;
     }
     if (twai_start() != ESP_OK) {
-        Serial.println("TWAI start failed");
+        Serial.println("TWAI#include <chrono> start failed");
         return false;
     }
     Serial.println("TWAI started @ 500 kbit/s");
@@ -240,16 +248,51 @@ void setup() {
 };
 
 void loop() {
-  HandleConnectionState();
+  //Handles received CAN messages
   can_check_recv();
+  
+  //Handles ROS connection and disconection etc
+  HandleConnectionState();
+  
+  //Check for GIM disconnection
+  /*
+  std::chrono::time_point<std::chrono::steady_clock> current_time = std::chrono::steady_clock::now();
+  std::chrono::milliseconds SinceLastGimMove_time = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - LastGimMove_time);
+  if (SinceLastGimMove_time > std::chrono::milliseconds(MaxDisconnectionTime_ms)) {
+    for (size_t i = 0; i < NUM_ODRIVE_MOTORS; ++i) {
+      odrives[i].set_ip_vel(0.0f, 0.5f);
+    }
+  }
+  */
+
   delay(5);
   /*
-  opencans[0].move_absolute(500,20,5,10);
-  opencans[1].move_absolute(500,20,5,10);
-  opencans[2].move_absolute(500,20,5,10);
-  opencans[3].move_absolute(500,20,5,10);
+  delay(1000);
+  Serial.print("homing");
+  opencans[0].home_motor();
+  opencans[1].home_motor();
+  opencans[2].home_motor();
+  opencans[3].home_motor();
+  delay(8000);
+  opencans[0].set_motor_pos_zero();
+  opencans[1].set_motor_pos_zero();
+  opencans[2].set_motor_pos_zero();
+  opencans[3].set_motor_pos_zero();
+  delay(500);
+  Serial.print("Move 0");
+  opencans[0].move_absolute(0,2,500,500);
+  opencans[1].move_absolute(0,2,500,500);
+  opencans[2].move_absolute(0,2,500,500);
+  opencans[3].move_absolute(0,2,500,500);
+  delay(3000);
+  Serial.print("Move 0");
+  opencans[0].move_absolute(250,2,500,500);
+  opencans[1].move_absolute(250,2,500,500);
+  opencans[2].move_absolute(250,2,500,500);
+  opencans[3].move_absolute(250,2,500,500);
   while(true){
-
+    delay(1000);
+    Serial.print("Loop");
   }
   */
 }
@@ -394,13 +437,13 @@ void Pivot_Drive_Callback(const void * msgin) {
     
     const double * array_data = DoubleArrmsg->data.data;
     
-
+    
     for(size_t i = 0; i < size; i++)
     {
       Serial.print("Pivot_Drive: ");Serial.print(i);Serial.print(" send:");Serial.println(array_data[i]);
       odrives[i].set_ip_vel(array_data[i]*ODRIVE_RPS[i], 0.5f);
     }
-
+    std::chrono::time_point<std::chrono::steady_clock> LastGimMove_time = std::chrono::steady_clock::now();
 }
 void Pivot_Stop_Callback(const void * msgin) {
 
