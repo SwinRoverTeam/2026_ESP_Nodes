@@ -18,7 +18,7 @@ constexpr int W5500_MOSI = 11;                          // MOSI PIN
 constexpr int W5500_SCK = 13;                           // Serial Clock PIN
 
 // Network Configuration
-byte esp_mac[] = { 0xDE, 0xAD, 0xAF, 0x91, 0x4E, 0x69 };    // Mac address of ESP32 (Make sure its unique for each ESP32)
+byte esp_mac[] = { 0xDE, 0xAD, 0xAD, 0x91, 0x4E, 0x69 };    // Mac address of ESP32 (Make sure its unique for each ESP32)
 IPAddress esp_ip(192, 168, 0, 14);                          // IP address of ESP32   (Make sure its unique for each ESP32)
 IPAddress dns(192, 168, 0, 1);                              // DNS Server           (Modify if necessary)
 IPAddress gateway(192, 168, 0, 1);                          // Default Gateway      (Modify if necessary)
