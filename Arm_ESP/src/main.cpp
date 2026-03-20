@@ -17,7 +17,7 @@
 #define W5500_SCK   13    // Serial Clock PIN
 
 // Network Configuration
-byte esp_mac[] = { 0xDE, 0xAD, 0xAF, 0x91, 0x3E, 0x69 };    // Mac address of ESP32 (Make sure its unique for each ESP32)
+byte esp_mac[] = { 0xDE, 0xAD, 0xAF, 0x91, 0x3E, 0x69};    // Mac address of ESP32 (Make sure its unique for each ESP32)
 IPAddress esp_ip(192, 168, 0, 13);                          // IP address of ESP32   (Make sure its unique for each ESP32)
 IPAddress dns(192, 168, 0, 1);                              // DNS Server           (Modify if necessary)
 IPAddress gateway(192, 168, 0, 1);                          // Default Gateway      (Modify if necessary)
@@ -116,8 +116,8 @@ constexpr size_t  NUM_OPENCAN_MOTORS  = sizeof(OPENCAN_NODE_IDS) / sizeof(OPENCA
 
 //ARM MAX/MIN POSITIONS 
 double CURRENTpos[] = {0.0, 0.0, 0.0, 0.0, 0.0};
-double MAXpos[] = {0.40, 0.0, 0.20, 0.80, 0.75};
-double MINpos[] = {-0.40, -0.20, -0.20, -0.80, -0.75};
+double MAXpos[] = {0.40, 0.0, 0.0, 0.60, 0.00};
+double MINpos[] = {-0.40, -0.23, -0.60, -0.60, 0.00};
 //Scaler for the joystick 1:x
 double JoyStickScale = 0.05;
 
@@ -447,7 +447,7 @@ void Arm_Joints_Callback(const void * msgin) {
           Serial.print("Arm_LiCh: ");Serial.print(i);Serial.print(" send:");Serial.println(CURRENTpos[i]);
 
         }
-        odrives[0].set_ip_pos(CURRENTpos[i], 0.005f,5.0f);
+        odrives[0].set_ip_pos(CURRENTpos[i], 0.003f,4.0f);
 
       break;
 
@@ -476,7 +476,7 @@ void Arm_Joints_Callback(const void * msgin) {
 
         } 
         
-        odrives[1].set_ip_pos(CURRENTpos[i], 0.005f,5.0f);
+        odrives[1].set_ip_pos(CURRENTpos[i], 0.005f,4.0f);
 
         
       break;
@@ -505,7 +505,7 @@ void Arm_Joints_Callback(const void * msgin) {
           Serial.print("Arm_LiCh: ");Serial.print(i);Serial.print(" send:");Serial.println(CURRENTpos[i]);
 
         }
-        odrives[2].set_ip_pos(CURRENTpos[i], 0.005f,5.0f);
+        odrives[2].set_ip_pos(CURRENTpos[i], 0.005f,4.0f);
         
       break;
 
