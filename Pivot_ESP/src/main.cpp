@@ -509,8 +509,8 @@ void KillSwitch_Callback(const void * msgin) {
     //Kill it all!!!!!!
 
     for (size_t i = 0; i < NUM_ODRIVE_MOTORS; ++i) {
-      odrives[i].stop(); //This is Estop. not just stop.
       odrives[i].set_ip_vel(0.0f, 0.5f);
+      odrives[i].stop(); //This is Estop. not just stop.
     }
     for (size_t i = 0; i < NUM_OPENCAN_MOTORS; ++i) {
       opencans[i].Estop();
