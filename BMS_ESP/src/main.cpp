@@ -30,7 +30,7 @@ uint16_t BMS_COMMS_TIMEOUT_ms = 1000;
 JikongMessenger JKmessenger(&Serial2, BMS_COMMS_TIME OUT_ms, NUM_CELLS);
 
 // Network Configuration
-byte esp_mac[] = { 0xDE, 0xAD, 0xAF, 0x91, 0x5E, 0x69 };    // Mac address of ESP32 (Make sure its unique for each ESP32)
+byte esp_mac[] = { 0xDE, 0xAD, 0xAF, 0x91, 0x5F, 0x49 };    // Mac address of ESP32 (Make sure its unique for each ESP32)
 IPAddress esp_ip(192, 168, 0, 15);                          // IP address of ESP32   (Make sure its unique for each ESP32)
 IPAddress dns(192, 168, 0, 1);                              // DNS Server           (Modify if necessary)
 IPAddress gateway(192, 168, 0, 1);                          // Default Gateway      (Modify if necessary)
