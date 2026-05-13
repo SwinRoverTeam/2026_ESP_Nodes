@@ -117,6 +117,7 @@ constexpr int OPENCAN_MICROSTEP = 400;
 constexpr size_t  NUM_OPENCAN_MOTORS  = sizeof(OPENCAN_NODE_IDS) / sizeof(OPENCAN_NODE_IDS[0]);;
 
 //Variables that track the last time a GIM was moved to avoid disconnection causing continued GIM motion
+void CheckGIMDisconnection();
 int MaxDisconnectionTime_ms = 300;
 std::chrono::time_point<std::chrono::steady_clock> current_time;
 std::chrono::time_point<std::chrono::steady_clock> LastGimMove_time;
@@ -193,6 +194,7 @@ void init_odrive_motors() {
 
 void init_opencan_motors() {
     for (size_t i = 0; i < NUM_OPENCAN_MOTORS; ++i) {
+        opencans[i].reset_alarm();
         opencans[i].enable_motor();
         delay(10);
     }
@@ -254,47 +256,21 @@ void loop() {
   //Handles ROS connection and disconection etc
   HandleConnectionState();
   
-  //Check for GIM disconnection
-  /*
-  std::chrono::time_point<std::chrono::steady_clock> current_time = std::chrono::steady_clock::now();
-  std::chrono::milliseconds SinceLastGimMove_time = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - LastGimMove_time);
-  if (SinceLastGimMove_time > std::chrono::milliseconds(MaxDisconnectionTime_ms)) {
-    for (size_t i = 0; i < NUM_ODRIVE_MOTORS; ++i) {
-      odrives[i].set_ip_vel(0.0f, 0.5f);
-    }
-  }
-  */
+  //Check for GIM disconnection, If LastGimMove_time > Elapsed time then sets all GIM velocity to 0 to avoid continued movement if controller node gets disconnected
+  CheckGIMDisconnection();
 
   delay(5);
-  /*
-  delay(1000);
-  Serial.print("homing");
-  opencans[0].home_motor();
-  opencans[1].home_motor();
-  opencans[2].home_motor();
-  opencans[3].home_motor();
-  delay(8000);
-  opencans[0].set_motor_pos_zero();
-  opencans[1].set_motor_pos_zero();
-  opencans[2].set_motor_pos_zero();
-  opencans[3].set_motor_pos_zero();
-  delay(500);
-  Serial.print("Move 0");
-  opencans[0].move_absolute(0,2,500,500);
-  opencans[1].move_absolute(0,2,500,500);
-  opencans[2].move_absolute(0,2,500,500);
-  opencans[3].move_absolute(0,2,500,500);
-  delay(3000);
-  Serial.print("Move 0");
-  opencans[0].move_absolute(250,2,500,500);
-  opencans[1].move_absolute(250,2,500,500);
-  opencans[2].move_absolute(250,2,500,500);
-  opencans[3].move_absolute(250,2,500,500);
-  while(true){
-    delay(1000);
-    Serial.print("Loop");
+}
+
+void CheckGIMDisconnection(){
+  auto now = std::chrono::steady_clock::now();
+  auto elapsed = now - LastGimMove_time;  // elapsed is a duration
+  if (elapsed > std::chrono::milliseconds(MaxDisconnectionTime_ms)) {
+    for (size_t i = 0; i < NUM_ODRIVE_MOTORS; ++i) {
+        odrives[i].set_ip_vel(0.0f, 0.5f);
+    }
+    Serial.println("GIM Disconnected, stopping motors");
   }
-  */
 }
 
 // This function handles the connect between Micro ROS inside the ESP and the Micro ROS agent
@@ -443,7 +419,7 @@ void Pivot_Drive_Callback(const void * msgin) {
       Serial.print("Pivot_Drive: ");Serial.print(i);Serial.print(" send:");Serial.println(array_data[i]);
       odrives[i].set_ip_vel(array_data[i]*ODRIVE_RPS[i], 0.5f);
     }
-    std::chrono::time_point<std::chrono::steady_clock> LastGimMove_time = std::chrono::steady_clock::now();
+    LastGimMove_time = std::chrono::steady_clock::now();
 }
 void Pivot_Stop_Callback(const void * msgin) {
 
@@ -472,10 +448,26 @@ void Pivot_Home_Callback(const void * msgin) {
   if(msg_bool->data==true){
     Pivot_Diagnostics.publish("PivotESP is homing");
 
+    /*
+    Currently homes the motors but they have no offset so they home limit switch = 0 position.
+
     //Homing sequence
-    for (size_t i = 0; i < NUM_OPENCAN_MOTORS; ++i) {
-      opencans[i].home_motor();
-    }
+    Serial.println("homing");
+    opencans[0].home_motor(-110);
+    opencans[1].home_motor(-110);
+    opencans[2].home_motor(-110);
+    opencans[3].home_motor(-110);
+    delay(12000);//Maxtime for homing
+
+    Serial.println("Re-engage");
+    opencans[0].enable_motor();
+    delay(10);
+    opencans[1].enable_motor();
+    delay(10);
+    opencans[2].enable_motor();
+    delay(10);
+    opencans[3].enable_motor();
+    */
 
     //Pivot_Diagnostics.publish("PivotESP is done homing");
   }
@@ -515,6 +507,5 @@ void KillSwitch_Callback(const void * msgin) {
     for (size_t i = 0; i < NUM_OPENCAN_MOTORS; ++i) {
       opencans[i].Estop();
     }
-    //Enter A never ending loop! System requires a shutdown
   }
 }
